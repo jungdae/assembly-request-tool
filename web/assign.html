@@ -170,8 +170,8 @@
         <input id="pdfFiles" type="file" accept="application/pdf" multiple>
       </div>
       <div>
-        <label for="csvFile">문항목록 CSV</label>
-        <input id="csvFile" type="file" accept=".csv,text/csv">
+        <label for="csvFile">문항목록 CSV/XLSX</label>
+        <input id="csvFile" type="file" accept=".csv,text/csv,.xlsx,.xls,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet,application/vnd.ms-excel">
       </div>
       <div class="actions">
         <button type="button" data-read-pdf>PDF 분해</button>
@@ -271,7 +271,7 @@
       const file = csvInput.files && csvInput.files[0];
       if (!file) return;
       try {
-        const rows = Common.rowsToObjects(Common.parseCsv(await file.text()));
+        const rows = await readQuestionList(file);
         state.previewRows = rows;
         renderPreview();
         Common.setStatus(`${file.name}에서 ${rows.length}문항을 읽었습니다.`, "ok");
@@ -327,6 +327,22 @@
         pages.push(linesFromTextContent(content).join("\n"));
       }
       return pages.join("\n");
+    }
+
+    async function readQuestionList(file) {
+      const lowerName = file.name.toLowerCase();
+      if (lowerName.endsWith(".xlsx") || lowerName.endsWith(".xls")) {
+        const workbook = await Common.readWorkbook(file);
+        const sheetName = workbook.SheetNames[0];
+        if (!sheetName) throw new Error("엑셀 파일에 시트가 없습니다.");
+        const rows = XLSX.utils.sheet_to_json(workbook.Sheets[sheetName], {
+          header: 1,
+          defval: "",
+          raw: false,
+        });
+        return Common.rowsToObjects(rows.filter((row) => row.some((value) => String(value).trim())));
+      }
+      return Common.rowsToObjects(Common.parseCsv(await file.text()));
     }
 
     function linesFromTextContent(content) {
