@@ -1,0 +1,535 @@
+<!doctype html>
+<html lang="ko">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>A부 조직도 26개과</title>
+  <style>
+    :root {
+      --ink: #172033;
+      --muted: #627088;
+      --line: #d9e1ec;
+      --paper: #ffffff;
+      --page: #f5f7fb;
+      --accent: #2563eb;
+      --accent-2: #0f766e;
+      --spring: cubic-bezier(.34,1.56,.64,1);
+      --ease: cubic-bezier(.2,.7,.2,1);
+      --tone-0: #2563eb;
+      --tone-1: #0f766e;
+      --tone-2: #b45309;
+      --tone-3: #7c3aed;
+      --tone-4: #be123c;
+      --tone-5: #047857;
+      --tone-6: #0369a1;
+      --tone-7: #9333ea;
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      color: var(--ink);
+      background:
+        linear-gradient(180deg, #eef4ff 0, rgba(238,244,255,0) 260px),
+        var(--page);
+      font-family: "Malgun Gothic", "Apple SD Gothic Neo", Arial, sans-serif;
+      line-height: 1.55;
+      letter-spacing: 0;
+    }
+    .wrap {
+      width: min(1180px, calc(100% - 36px));
+      margin: 28px auto 40px;
+    }
+    header {
+      display: grid;
+      gap: 14px;
+      margin-bottom: 18px;
+    }
+    .eyebrow {
+      color: var(--accent-2);
+      font-size: 14px;
+      font-weight: 700;
+    }
+    h1 {
+      margin: 0;
+      font-size: clamp(27px, 3vw, 42px);
+      line-height: 1.18;
+      letter-spacing: 0;
+    }
+    .summary {
+      margin: 0;
+      max-width: 900px;
+      color: var(--muted);
+      font-size: 15px;
+    }
+    .stats {
+      display: grid;
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+      gap: 10px;
+      margin-top: 2px;
+      max-width: 720px;
+    }
+    .stat {
+      border: 1px solid var(--line);
+      background: rgba(255,255,255,.92);
+      padding: 12px 14px;
+      border-radius: 8px;
+      box-shadow: 0 8px 24px rgba(23, 32, 51, .06);
+    }
+    .stat strong {
+      display: block;
+      font-size: 26px;
+      line-height: 1.1;
+      font-variant-numeric: tabular-nums;
+    }
+    .stat span {
+      display: block;
+      margin-top: 5px;
+      color: var(--muted);
+      font-size: 13px;
+    }
+    .groups {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+      margin: 18px 0;
+    }
+    .group {
+      --tone: var(--tone-0);
+      display: inline-flex;
+      align-items: center;
+      gap: 7px;
+      border: 1px solid color-mix(in srgb, var(--tone) 28%, #dfe6f0);
+      border-left: 4px solid var(--tone);
+      background: #fff;
+      border-radius: 8px;
+      padding: 7px 10px;
+      font-size: 13px;
+      box-shadow: 0 1px 0 rgba(15, 23, 42, .04);
+      transition: transform .42s var(--spring), box-shadow .18s ease, background-color .18s ease;
+    }
+    .group:hover {
+      transform: translateY(-3px);
+      box-shadow: 0 12px 22px rgba(23, 32, 51, .11);
+      background: color-mix(in srgb, var(--tone) 6%, #fff);
+    }
+    .group em {
+      color: var(--muted);
+      font-style: normal;
+    }
+    .toolbar {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      margin: 18px 0 10px;
+    }
+    .search {
+      width: min(420px, 100%);
+      border: 1px solid var(--line);
+      background: #fff;
+      border-radius: 8px;
+      padding: 10px 12px;
+      color: var(--ink);
+      font-size: 15px;
+      outline: none;
+      transition: border-color .18s ease, box-shadow .18s ease, transform .42s var(--spring);
+    }
+    .search:focus {
+      border-color: var(--accent);
+      box-shadow: 0 0 0 3px rgba(37, 99, 235, .14);
+      transform: translateY(-1px);
+    }
+    .count {
+      color: var(--muted);
+      font-size: 14px;
+      white-space: nowrap;
+    }
+    .table-shell {
+      position: relative;
+      overflow: auto;
+      border: 1px solid var(--line);
+      background: var(--paper);
+      border-radius: 8px;
+      box-shadow: 0 12px 30px rgba(23, 32, 51, .08);
+    }
+    .table-shell::before {
+      content: "";
+      position: sticky;
+      left: 0;
+      display: block;
+      width: 100%;
+      height: 3px;
+      background: linear-gradient(90deg, var(--accent), var(--accent-2));
+      z-index: 3;
+    }
+    table {
+      width: 100%;
+      min-width: 980px;
+      border-collapse: collapse;
+      table-layout: fixed;
+    }
+    th, td {
+      border-bottom: 1px solid var(--line);
+      padding: 12px 14px;
+      text-align: left;
+      vertical-align: top;
+      font-size: 14px;
+    }
+    th {
+      position: sticky;
+      top: 3px;
+      z-index: 2;
+      background: #eef3fb;
+      color: #26344d;
+      font-weight: 700;
+    }
+    th:first-child, td:first-child { width: 56px; text-align: center; }
+    th:nth-child(2), td:nth-child(2) { width: 160px; }
+    th:nth-child(3), td:nth-child(3) { width: 190px; }
+    th:nth-child(5), td:nth-child(5) { width: 260px; }
+    tbody tr {
+      --tone: var(--tone-0);
+      transition: opacity .58s var(--ease), transform .58s var(--ease), background-color .18s ease, box-shadow .18s ease;
+    }
+    tbody tr:hover {
+      background: color-mix(in srgb, var(--tone) 9%, #fff);
+      box-shadow: inset 4px 0 0 var(--tone);
+      transform: translateY(-2px);
+    }
+    .rownum {
+      color: var(--muted);
+      font-variant-numeric: tabular-nums;
+    }
+    .bureau {
+      display: inline-block;
+      border-left: 4px solid var(--tone);
+      padding-left: 8px;
+      font-weight: 700;
+    }
+    .dept { font-weight: 700; }
+    .chips {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 6px;
+    }
+    .chip {
+      border: 1px solid color-mix(in srgb, var(--tone) 24%, #dfe6f0);
+      background: color-mix(in srgb, var(--tone) 8%, #fff);
+      color: #273347;
+      border-radius: 999px;
+      padding: 3px 8px;
+      font-size: 12px;
+      white-space: nowrap;
+    }
+    [data-reveal] {
+      opacity: 0;
+      transform: translateY(34px);
+    }
+    [data-reveal].show {
+      opacity: 1;
+      transform: none;
+    }
+    .tone-0 { --tone: var(--tone-0); }
+    .tone-1 { --tone: var(--tone-1); }
+    .tone-2 { --tone: var(--tone-2); }
+    .tone-3 { --tone: var(--tone-3); }
+    .tone-4 { --tone: var(--tone-4); }
+    .tone-5 { --tone: var(--tone-5); }
+    .tone-6 { --tone: var(--tone-6); }
+    .tone-7 { --tone: var(--tone-7); }
+    .hidden { display: none; }
+    .note {
+      color: var(--muted);
+      font-size: 13px;
+      margin-top: 12px;
+    }
+    @media (max-width: 760px) {
+      .wrap { width: min(100% - 20px, 1180px); margin-top: 18px; }
+      .stats { grid-template-columns: 1fr; }
+      .toolbar { align-items: stretch; flex-direction: column; }
+      .count { white-space: normal; }
+    }
+    @media (prefers-reduced-motion: reduce) {
+      *, *::before, *::after { animation: none !important; transition: none !important; scroll-behavior: auto !important; }
+      [data-reveal] { opacity: 1; transform: none; }
+    }
+  </style>
+</head>
+<body>
+  <main class="wrap">
+    <header data-reveal>
+      <div class="eyebrow">A부 조직도</div>
+      <h1>26개 과 업무·키워드 현황</h1>
+      <p class="summary">CSV 자료의 실국, 과, 주요업무, 대표키워드를 HTML 안에 직접 넣은 단일 파일입니다. 별도 서버 없이 파일을 더블클릭하면 표를 바로 볼 수 있습니다.</p>
+      <div class="stats" aria-label="조직도 요약">
+        <div class="stat"><strong data-count="9">0</strong><span>실국</span></div>
+        <div class="stat"><strong data-count="26">0</strong><span>과</span></div>
+        <div class="stat"><strong data-count="4">0</strong><span>표 항목</span></div>
+      </div>
+    </header>
+
+    <section class="groups" data-reveal data-stagger aria-label="실국별 과 수">
+      <span class="group tone-0"><b>기획조정실</b><em>4개 과</em></span><span class="group tone-1"><b>대변인실</b><em>1개 과</em></span><span class="group tone-2"><b>감사관실</b><em>1개 과</em></span><span class="group tone-3"><b>운영지원과</b><em>1개 과</em></span><span class="group tone-4"><b>디지털정책국</b><em>4개 과</em></span><span class="group tone-5"><b>지역지원국</b><em>4개 과</em></span><span class="group tone-6"><b>안전관리국</b><em>4개 과</em></span><span class="group tone-7"><b>산업협력국</b><em>4개 과</em></span><span class="group tone-0"><b>인재정책국</b><em>3개 과</em></span>
+    </section>
+
+    <section class="toolbar" data-reveal aria-label="표 검색 도구">
+      <input id="search" class="search" type="search" placeholder="실국, 과, 업무, 키워드 검색" autocomplete="off">
+      <div id="count" class="count">전체 26개 과 표시 중</div>
+    </section>
+
+    <section class="table-shell" data-reveal aria-label="A부 조직도 표">
+      <table>
+        <thead>
+          <tr>
+            <th scope="col">순번</th>
+            <th scope="col">실국</th>
+            <th scope="col">과</th>
+            <th scope="col">주요업무</th>
+            <th scope="col">대표키워드</th>
+          </tr>
+        </thead>
+        <tbody data-stagger>
+
+          <tr class="org-row tone-0" data-reveal data-search="기획조정실 기획재정담당관 예산 편성·결산, 성과관리, 국회 업무 총괄 예산|결산|세출|성과관리">
+            <td class="rownum">1</td>
+            <td><span class="bureau">기획조정실</span></td>
+            <td class="dept">기획재정담당관</td>
+            <td>예산 편성·결산, 성과관리, 국회 업무 총괄</td>
+            <td><div class="chips"><span class="chip">예산</span><span class="chip">결산</span><span class="chip">세출</span><span class="chip">성과관리</span></div></td>
+          </tr>
+          <tr class="org-row tone-0" data-reveal data-search="기획조정실 혁신행정담당관 조직·정원, 정부혁신, 행정제도 조직|정원|직제|정부혁신">
+            <td class="rownum">2</td>
+            <td><span class="bureau">기획조정실</span></td>
+            <td class="dept">혁신행정담당관</td>
+            <td>조직·정원, 정부혁신, 행정제도</td>
+            <td><div class="chips"><span class="chip">조직</span><span class="chip">정원</span><span class="chip">직제</span><span class="chip">정부혁신</span></div></td>
+          </tr>
+          <tr class="org-row tone-0" data-reveal data-search="기획조정실 규제개혁법무담당관 법령 제·개정, 규제개혁, 소송 법령|시행령|시행규칙|고시">
+            <td class="rownum">3</td>
+            <td><span class="bureau">기획조정실</span></td>
+            <td class="dept">규제개혁법무담당관</td>
+            <td>법령 제·개정, 규제개혁, 소송</td>
+            <td><div class="chips"><span class="chip">법령</span><span class="chip">시행령</span><span class="chip">시행규칙</span><span class="chip">고시</span></div></td>
+          </tr>
+          <tr class="org-row tone-0" data-reveal data-search="기획조정실 정보화담당관 정보시스템 운영, 정보화 예산, 개인정보 보호 정보시스템|홈페이지|전산|정보화사업">
+            <td class="rownum">4</td>
+            <td><span class="bureau">기획조정실</span></td>
+            <td class="dept">정보화담당관</td>
+            <td>정보시스템 운영, 정보화 예산, 개인정보 보호</td>
+            <td><div class="chips"><span class="chip">정보시스템</span><span class="chip">홈페이지</span><span class="chip">전산</span><span class="chip">정보화사업</span></div></td>
+          </tr>
+          <tr class="org-row tone-1" data-reveal data-search="대변인실 홍보담당관 언론 대응, 정책 홍보, 보도자료 홍보|보도자료|언론|광고">
+            <td class="rownum">5</td>
+            <td><span class="bureau">대변인실</span></td>
+            <td class="dept">홍보담당관</td>
+            <td>언론 대응, 정책 홍보, 보도자료</td>
+            <td><div class="chips"><span class="chip">홍보</span><span class="chip">보도자료</span><span class="chip">언론</span><span class="chip">광고</span></div></td>
+          </tr>
+          <tr class="org-row tone-2" data-reveal data-search="감사관실 감사담당관 자체감사, 공직기강, 부패방지 감사|공직기강|징계|부패">
+            <td class="rownum">6</td>
+            <td><span class="bureau">감사관실</span></td>
+            <td class="dept">감사담당관</td>
+            <td>자체감사, 공직기강, 부패방지</td>
+            <td><div class="chips"><span class="chip">감사</span><span class="chip">공직기강</span><span class="chip">징계</span><span class="chip">부패</span></div></td>
+          </tr>
+          <tr class="org-row tone-3" data-reveal data-search="운영지원과 운영지원과 인사·복무, 청사관리, 업무추진비, 관용차량 인사|승진|복무|청사">
+            <td class="rownum">7</td>
+            <td><span class="bureau">운영지원과</span></td>
+            <td class="dept">운영지원과</td>
+            <td>인사·복무, 청사관리, 업무추진비, 관용차량</td>
+            <td><div class="chips"><span class="chip">인사</span><span class="chip">승진</span><span class="chip">복무</span><span class="chip">청사</span></div></td>
+          </tr>
+          <tr class="org-row tone-4" data-reveal data-search="디지털정책국 디지털정책과 디지털 전환 정책, ai 행정 도입 디지털전환|인공지능|ai|디지털플랫폼">
+            <td class="rownum">8</td>
+            <td><span class="bureau">디지털정책국</span></td>
+            <td class="dept">디지털정책과</td>
+            <td>디지털 전환 정책, AI 행정 도입</td>
+            <td><div class="chips"><span class="chip">디지털전환</span><span class="chip">인공지능</span><span class="chip">AI</span><span class="chip">디지털플랫폼</span></div></td>
+          </tr>
+          <tr class="org-row tone-4" data-reveal data-search="디지털정책국 데이터정책과 공공데이터 개방, 데이터 표준 공공데이터|데이터 개방|데이터표준|빅데이터">
+            <td class="rownum">9</td>
+            <td><span class="bureau">디지털정책국</span></td>
+            <td class="dept">데이터정책과</td>
+            <td>공공데이터 개방, 데이터 표준</td>
+            <td><div class="chips"><span class="chip">공공데이터</span><span class="chip">데이터 개방</span><span class="chip">데이터표준</span><span class="chip">빅데이터</span></div></td>
+          </tr>
+          <tr class="org-row tone-4" data-reveal data-search="디지털정책국 정보보호과 사이버 보안, 해킹 대응 사이버|해킹|보안|랜섬웨어">
+            <td class="rownum">10</td>
+            <td><span class="bureau">디지털정책국</span></td>
+            <td class="dept">정보보호과</td>
+            <td>사이버 보안, 해킹 대응</td>
+            <td><div class="chips"><span class="chip">사이버</span><span class="chip">해킹</span><span class="chip">보안</span><span class="chip">랜섬웨어</span></div></td>
+          </tr>
+          <tr class="org-row tone-4" data-reveal data-search="디지털정책국 공공서비스혁신과 전자정부 서비스, 온라인 민원 전자정부|온라인 민원|모바일 신분증|간편인증">
+            <td class="rownum">11</td>
+            <td><span class="bureau">디지털정책국</span></td>
+            <td class="dept">공공서비스혁신과</td>
+            <td>전자정부 서비스, 온라인 민원</td>
+            <td><div class="chips"><span class="chip">전자정부</span><span class="chip">온라인 민원</span><span class="chip">모바일 신분증</span><span class="chip">간편인증</span></div></td>
+          </tr>
+          <tr class="org-row tone-5" data-reveal data-search="지역지원국 지역정책과 지역 정책 총괄, 지자체 협력 지자체|지역정책|자치|지방자치">
+            <td class="rownum">12</td>
+            <td><span class="bureau">지역지원국</span></td>
+            <td class="dept">지역정책과</td>
+            <td>지역 정책 총괄, 지자체 협력</td>
+            <td><div class="chips"><span class="chip">지자체</span><span class="chip">지역정책</span><span class="chip">자치</span><span class="chip">지방자치</span></div></td>
+          </tr>
+          <tr class="org-row tone-5" data-reveal data-search="지역지원국 지역개발과 지역개발사업, 기반시설 지역개발|개발사업|도시재생|기반시설">
+            <td class="rownum">13</td>
+            <td><span class="bureau">지역지원국</span></td>
+            <td class="dept">지역개발과</td>
+            <td>지역개발사업, 기반시설</td>
+            <td><div class="chips"><span class="chip">지역개발</span><span class="chip">개발사업</span><span class="chip">도시재생</span><span class="chip">기반시설</span></div></td>
+          </tr>
+          <tr class="org-row tone-5" data-reveal data-search="지역지원국 균형발전과 국가균형발전, 인구감소지역 균형발전|인구감소|소멸|지방이전">
+            <td class="rownum">14</td>
+            <td><span class="bureau">지역지원국</span></td>
+            <td class="dept">균형발전과</td>
+            <td>국가균형발전, 인구감소지역</td>
+            <td><div class="chips"><span class="chip">균형발전</span><span class="chip">인구감소</span><span class="chip">소멸</span><span class="chip">지방이전</span></div></td>
+          </tr>
+          <tr class="org-row tone-5" data-reveal data-search="지역지원국 지방재정협력과 지방교부세, 국고보조금 교부세|보조금|국고보조|지방재정">
+            <td class="rownum">15</td>
+            <td><span class="bureau">지역지원국</span></td>
+            <td class="dept">지방재정협력과</td>
+            <td>지방교부세, 국고보조금</td>
+            <td><div class="chips"><span class="chip">교부세</span><span class="chip">보조금</span><span class="chip">국고보조</span><span class="chip">지방재정</span></div></td>
+          </tr>
+          <tr class="org-row tone-6" data-reveal data-search="안전관리국 안전정책과 안전 정책 총괄, 안전 점검 제도 안전정책|안전점검|안전관리|안전문화">
+            <td class="rownum">16</td>
+            <td><span class="bureau">안전관리국</span></td>
+            <td class="dept">안전정책과</td>
+            <td>안전 정책 총괄, 안전 점검 제도</td>
+            <td><div class="chips"><span class="chip">안전정책</span><span class="chip">안전점검</span><span class="chip">안전관리</span><span class="chip">안전문화</span></div></td>
+          </tr>
+          <tr class="org-row tone-6" data-reveal data-search="안전관리국 재난대응과 재난 대응, 재난 지원금 재난|태풍|호우|지진">
+            <td class="rownum">17</td>
+            <td><span class="bureau">안전관리국</span></td>
+            <td class="dept">재난대응과</td>
+            <td>재난 대응, 재난 지원금</td>
+            <td><div class="chips"><span class="chip">재난</span><span class="chip">태풍</span><span class="chip">호우</span><span class="chip">지진</span></div></td>
+          </tr>
+          <tr class="org-row tone-6" data-reveal data-search="안전관리국 시설안전과 공공시설 안전, 노후시설 시설물|노후시설|교량|터널">
+            <td class="rownum">18</td>
+            <td><span class="bureau">안전관리국</span></td>
+            <td class="dept">시설안전과</td>
+            <td>공공시설 안전, 노후시설</td>
+            <td><div class="chips"><span class="chip">시설물</span><span class="chip">노후시설</span><span class="chip">교량</span><span class="chip">터널</span></div></td>
+          </tr>
+          <tr class="org-row tone-6" data-reveal data-search="안전관리국 기후위기대응과 기후위기 적응, 폭염·한파 대책 기후|폭염|한파|탄소">
+            <td class="rownum">19</td>
+            <td><span class="bureau">안전관리국</span></td>
+            <td class="dept">기후위기대응과</td>
+            <td>기후위기 적응, 폭염·한파 대책</td>
+            <td><div class="chips"><span class="chip">기후</span><span class="chip">폭염</span><span class="chip">한파</span><span class="chip">탄소</span></div></td>
+          </tr>
+          <tr class="org-row tone-7" data-reveal data-search="산업협력국 산업정책과 산업 정책, 규제 샌드박스 산업정책|신산업|규제 샌드박스|첨단산업">
+            <td class="rownum">20</td>
+            <td><span class="bureau">산업협력국</span></td>
+            <td class="dept">산업정책과</td>
+            <td>산업 정책, 규제 샌드박스</td>
+            <td><div class="chips"><span class="chip">산업정책</span><span class="chip">신산업</span><span class="chip">규제 샌드박스</span><span class="chip">첨단산업</span></div></td>
+          </tr>
+          <tr class="org-row tone-7" data-reveal data-search="산업협력국 중소기업지원과 중소기업·소상공인 지원 사업 중소기업|소상공인|창업|벤처">
+            <td class="rownum">21</td>
+            <td><span class="bureau">산업협력국</span></td>
+            <td class="dept">중소기업지원과</td>
+            <td>중소기업·소상공인 지원 사업</td>
+            <td><div class="chips"><span class="chip">중소기업</span><span class="chip">소상공인</span><span class="chip">창업</span><span class="chip">벤처</span></div></td>
+          </tr>
+          <tr class="org-row tone-7" data-reveal data-search="산업협력국 국제협력과 국제기구 협력, 해외 협력사업 국제기구|oda|해외 협력|양해각서">
+            <td class="rownum">22</td>
+            <td><span class="bureau">산업협력국</span></td>
+            <td class="dept">국제협력과</td>
+            <td>국제기구 협력, 해외 협력사업</td>
+            <td><div class="chips"><span class="chip">국제기구</span><span class="chip">ODA</span><span class="chip">해외 협력</span><span class="chip">양해각서</span></div></td>
+          </tr>
+          <tr class="org-row tone-7" data-reveal data-search="산업협력국 통상협력과 통상 협상, 수출 지원 통상|수출|fta|관세">
+            <td class="rownum">23</td>
+            <td><span class="bureau">산업협력국</span></td>
+            <td class="dept">통상협력과</td>
+            <td>통상 협상, 수출 지원</td>
+            <td><div class="chips"><span class="chip">통상</span><span class="chip">수출</span><span class="chip">FTA</span><span class="chip">관세</span></div></td>
+          </tr>
+          <tr class="org-row tone-0" data-reveal data-search="인재정책국 인재정책과 인재 양성 정책, 장학 사업 인재양성|장학|청년인재|전문인력">
+            <td class="rownum">24</td>
+            <td><span class="bureau">인재정책국</span></td>
+            <td class="dept">인재정책과</td>
+            <td>인재 양성 정책, 장학 사업</td>
+            <td><div class="chips"><span class="chip">인재양성</span><span class="chip">장학</span><span class="chip">청년인재</span><span class="chip">전문인력</span></div></td>
+          </tr>
+          <tr class="org-row tone-0" data-reveal data-search="인재정책국 교육훈련과 공무원·민간 교육훈련 교육훈련|연수|교육과정|직무교육">
+            <td class="rownum">25</td>
+            <td><span class="bureau">인재정책국</span></td>
+            <td class="dept">교육훈련과</td>
+            <td>공무원·민간 교육훈련</td>
+            <td><div class="chips"><span class="chip">교육훈련</span><span class="chip">연수</span><span class="chip">교육과정</span><span class="chip">직무교육</span></div></td>
+          </tr>
+          <tr class="org-row tone-0" data-reveal data-search="인재정책국 고용지원과 고용 지원 사업, 일자리 일자리|고용|취업|청년고용">
+            <td class="rownum">26</td>
+            <td><span class="bureau">인재정책국</span></td>
+            <td class="dept">고용지원과</td>
+            <td>고용 지원 사업, 일자리</td>
+            <td><div class="chips"><span class="chip">일자리</span><span class="chip">고용</span><span class="chip">취업</span><span class="chip">청년고용</span></div></td>
+          </tr>
+        </tbody>
+      </table>
+    </section>
+    <p class="note" data-reveal>적용 효과: 페이드 업(fade up on scroll), 스태거 그리드(stagger children), 카운트업(count-up on view), 호버 리프트(hover lift)를 적용했습니다. 조직도 표는 검색과 판독이 핵심이므로 강한 장식 효과는 제외했습니다.</p>
+  </main>
+  <script>
+    const REDUCE = matchMedia('(prefers-reduced-motion: reduce)').matches;
+    const search = document.getElementById('search');
+    const count = document.getElementById('count');
+    const rows = Array.from(document.querySelectorAll('tbody tr'));
+    const total = rows.length;
+
+    function countUp(el) {
+      const target = Number(el.dataset.count || 0);
+      if (REDUCE) { el.textContent = target; return; }
+      const start = performance.now();
+      const duration = 900;
+      function tick(now) {
+        const t = Math.min(1, (now - start) / duration);
+        const eased = 1 - Math.pow(1 - t, 3);
+        el.textContent = Math.round(target * eased);
+        if (t < 1) requestAnimationFrame(tick);
+      }
+      requestAnimationFrame(tick);
+    }
+
+    const io = new IntersectionObserver((entries) => {
+      entries.forEach((entry) => {
+        if (!entry.isIntersecting) return;
+        const el = entry.target;
+        el.classList.add('show');
+        if (el.hasAttribute('data-stagger')) {
+          Array.from(el.children).forEach((child, i) => { child.style.transitionDelay = `${i * 45}ms`; });
+        }
+        if (el.hasAttribute('data-count') && !el.dataset.done) {
+          el.dataset.done = '1';
+          countUp(el);
+        }
+        io.unobserve(el);
+      });
+    }, { threshold: 0.14 });
+
+    document.querySelectorAll('[data-reveal], [data-count]').forEach((el) => io.observe(el));
+
+    search.addEventListener('input', () => {
+      const q = search.value.trim().toLowerCase();
+      let visible = 0;
+      rows.forEach((row, i) => {
+        const hit = !q || row.dataset.search.includes(q);
+        row.classList.toggle('hidden', !hit);
+        if (hit) {
+          row.style.transitionDelay = q ? `${Math.min(visible, 8) * 35}ms` : `${i * 45}ms`;
+          row.classList.add('show');
+          visible += 1;
+        }
+      });
+      count.textContent = q ? `${visible}개 과 표시 중 / 전체 ${total}개` : `전체 ${total}개 과 표시 중`;
+    });
+  </script>
+</body>
+</html>

@@ -1,0 +1,406 @@
+<!doctype html>
+<html lang="ko">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>배분</title>
+  <style>
+    :root {
+      --bg: #f6f7f9;
+      --line: #d8dde6;
+      --text: #1d2733;
+      --muted: #647084;
+      --accent: #0f6b5f;
+      --accent-weak: #e5f3f0;
+      --danger: #a43b3b;
+      --white: #fff;
+      --focus: #ffbf47;
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      background: var(--bg);
+      color: var(--text);
+      font-family: "Segoe UI", "Malgun Gothic", Arial, sans-serif;
+      letter-spacing: 0;
+    }
+    header {
+      background: var(--white);
+      border-bottom: 1px solid var(--line);
+      padding: 14px 24px;
+      display: flex;
+      justify-content: space-between;
+      gap: 16px;
+      align-items: center;
+      position: sticky;
+      top: 0;
+      z-index: 10;
+    }
+    h1 { margin: 0; font-size: 20px; font-weight: 700; }
+    nav { display: flex; gap: 8px; flex-wrap: wrap; }
+    nav a {
+      color: var(--text);
+      text-decoration: none;
+      border: 1px solid var(--line);
+      background: var(--white);
+      padding: 8px 12px;
+      border-radius: 6px;
+      font-size: 14px;
+    }
+    nav a.active { border-color: var(--accent); background: var(--accent-weak); color: var(--accent); font-weight: 700; }
+    main { padding: 18px 24px 32px; max-width: 1440px; margin: 0 auto; }
+    .toolbar, section {
+      background: var(--white);
+      border: 1px solid var(--line);
+      border-radius: 8px;
+    }
+    .toolbar {
+      padding: 14px;
+      display: grid;
+      grid-template-columns: minmax(260px, 1fr) minmax(260px, 1fr) auto;
+      gap: 12px;
+      align-items: end;
+      margin-bottom: 14px;
+    }
+    section { margin-top: 14px; }
+    .section-head {
+      padding: 14px 16px;
+      border-bottom: 1px solid var(--line);
+      display: flex;
+      justify-content: space-between;
+      gap: 12px;
+      align-items: center;
+    }
+    h2 { margin: 0; font-size: 17px; }
+    label { display: block; color: var(--muted); font-size: 13px; font-weight: 700; margin-bottom: 6px; }
+    input[type="file"], select {
+      width: 100%;
+      border: 1px solid var(--line);
+      border-radius: 6px;
+      background: var(--white);
+      padding: 8px;
+      font: inherit;
+      min-height: 38px;
+    }
+    select[multiple] { min-height: 74px; }
+    button {
+      border: 1px solid var(--accent);
+      background: var(--accent);
+      color: #fff;
+      border-radius: 6px;
+      padding: 9px 12px;
+      font: inherit;
+      cursor: pointer;
+      min-height: 38px;
+      white-space: nowrap;
+    }
+    button.secondary { background: var(--white); color: var(--accent); }
+    button:disabled { opacity: .45; cursor: not-allowed; }
+    [data-status] {
+      margin-bottom: 12px;
+      min-height: 22px;
+      color: var(--muted);
+      font-size: 14px;
+    }
+    [data-status][data-tone="error"] { color: var(--danger); font-weight: 700; }
+    [data-status][data-tone="ok"] { color: var(--accent); font-weight: 700; }
+    .table-wrap { overflow: auto; max-height: 62vh; }
+    table { width: 100%; border-collapse: collapse; font-size: 13px; min-width: 1180px; }
+    th, td { border-bottom: 1px solid var(--line); padding: 9px; text-align: left; vertical-align: top; }
+    th { background: #fafbfc; color: var(--muted); font-weight: 700; position: sticky; top: 0; z-index: 1; }
+    .preview-table { min-width: 960px; }
+    .status-pill {
+      display: inline-flex;
+      border: 1px solid var(--line);
+      border-radius: 999px;
+      padding: 3px 8px;
+      background: #fff;
+      white-space: nowrap;
+    }
+    .status-pill.done { border-color: var(--accent); background: var(--accent-weak); color: var(--accent); font-weight: 700; }
+    .muted { color: var(--muted); }
+    .candidate-list { margin: 0; padding-left: 18px; }
+    .request-text { max-width: 420px; white-space: pre-wrap; }
+    .small { font-size: 12px; color: var(--muted); margin-top: 4px; }
+    .confirm-cell { min-width: 92px; }
+    .actions { display: flex; gap: 8px; flex-wrap: wrap; }
+    .empty { padding: 18px; color: var(--muted); }
+    @media (max-width: 900px) {
+      header { align-items: flex-start; flex-direction: column; }
+      main { padding: 14px; }
+      .toolbar { grid-template-columns: 1fr; }
+    }
+  </style>
+</head>
+<body>
+  <header>
+    <h1>배분</h1>
+    <nav>
+      <a href="index.html">시작 화면</a>
+      <a class="active" href="assign.html">배분</a>
+      <a href="#" aria-disabled="true">현업 회신</a>
+      <a href="#" aria-disabled="true">취합</a>
+    </nav>
+  </header>
+
+  <main>
+    <div data-status>자료를 읽는 중입니다.</div>
+
+    <div class="toolbar">
+      <div>
+        <label for="pdfFiles">요구서 PDF</label>
+        <input id="pdfFiles" type="file" accept="application/pdf" multiple>
+      </div>
+      <div>
+        <label for="csvFile">문항목록 CSV</label>
+        <input id="csvFile" type="file" accept=".csv,text/csv">
+      </div>
+      <div class="actions">
+        <button type="button" data-read-pdf>PDF 분해</button>
+        <button class="secondary" type="button" data-load-sample>문항목록 불러오기</button>
+      </div>
+    </div>
+
+    <section>
+      <div class="section-head">
+        <h2>① 접수</h2>
+        <div class="actions">
+          <button type="button" data-register disabled>접수 등록</button>
+        </div>
+      </div>
+      <div class="table-wrap" data-preview><p class="empty">PDF를 분해하거나 문항목록 CSV를 불러오면 여기에 표시됩니다.</p></div>
+    </section>
+
+    <section>
+      <div class="section-head">
+        <h2>② 배분</h2>
+        <div class="actions">
+          <button class="secondary" type="button" data-refresh>새로고침</button>
+        </div>
+      </div>
+      <div class="table-wrap" data-assign><p class="empty">접수 등록된 문항이 없습니다.</p></div>
+    </section>
+  </main>
+
+  <script src="common.js"></script>
+  <script src="split.js"></script>
+  <script src="engine.js"></script>
+  <script type="module">
+    import * as pdfjsLib from "./lib/pdf.min.mjs";
+
+    pdfjsLib.GlobalWorkerOptions.workerSrc = "./lib/pdf.worker.min.mjs";
+
+    const state = {
+      previewRows: [],
+      departments: [],
+      ready: false,
+    };
+
+    const pdfInput = document.querySelector("#pdfFiles");
+    const csvInput = document.querySelector("#csvFile");
+    const readPdfButton = document.querySelector("[data-read-pdf]");
+    const loadSampleButton = document.querySelector("[data-load-sample]");
+    const registerButton = document.querySelector("[data-register]");
+    const refreshButton = document.querySelector("[data-refresh]");
+    const previewTarget = document.querySelector("[data-preview]");
+    const assignTarget = document.querySelector("[data-assign]");
+
+    init();
+
+    async function init() {
+      try {
+        await AssignEngine.loadFromUrls("data/rules_보강.csv", "data/A부_조직도_26개과.csv");
+        const orgRows = await Common.loadCsv("data/A부_조직도_26개과.csv");
+        state.departments = orgRows.map((row) => row.과).filter(Boolean);
+        state.ready = true;
+        Common.setStatus("보강 기준표와 조직도를 읽었습니다.", "ok");
+        renderAssign();
+      } catch (error) {
+        Common.setStatus(error.message, "error");
+      }
+    }
+
+    readPdfButton.addEventListener("click", async () => {
+      const files = Array.from(pdfInput.files || []);
+      if (!files.length) {
+        Common.setStatus("PDF 파일을 선택해 주세요.", "error");
+        return;
+      }
+      try {
+        Common.setStatus("PDF 글자를 읽고 문항을 분해하는 중입니다.");
+        const rows = [];
+        for (const file of files) {
+          const text = await readPdfText(file);
+          rows.push(...QuestionSplit.splitText(text, file.name));
+        }
+        state.previewRows = rows;
+        renderPreview();
+        Common.setStatus(`PDF ${files.length}건에서 ${rows.length}문항을 분해했습니다.`, "ok");
+      } catch (error) {
+        Common.setStatus(error.message, "error");
+      }
+    });
+
+    csvInput.addEventListener("change", async () => {
+      const file = csvInput.files && csvInput.files[0];
+      if (!file) return;
+      try {
+        const rows = Common.rowsToObjects(Common.parseCsv(await file.text()));
+        state.previewRows = rows;
+        renderPreview();
+        Common.setStatus(`${file.name}에서 ${rows.length}문항을 읽었습니다.`, "ok");
+      } catch (error) {
+        Common.setStatus(error.message, "error");
+      }
+    });
+
+    loadSampleButton.addEventListener("click", async () => {
+      try {
+        const rows = await Common.loadCsv("data/문항목록.csv");
+        state.previewRows = rows;
+        renderPreview();
+        Common.setStatus(`문항목록.csv에서 ${rows.length}문항을 읽었습니다.`, "ok");
+      } catch (error) {
+        Common.setStatus(error.message, "error");
+      }
+    });
+
+    registerButton.addEventListener("click", () => {
+      if (!state.previewRows.length) return;
+      const withCandidates = state.previewRows.map((row) => {
+        const normalized = Common.normalizeQuestion(row);
+        const candidates = AssignEngine.classify(normalized.요구내용);
+        return {
+          ...normalized,
+          후보: candidates,
+          주관과: normalized.주관과 || (candidates[0] ? candidates[0].과 : ""),
+          기록: [
+            ...(normalized.기록 || []),
+            { 일시: Common.todayStamp(), 작업: "접수", 메모: "브라우저 접수 등록" },
+          ],
+        };
+      });
+      const saved = Common.mergeCases(withCandidates);
+      Common.setStatus(`${withCandidates.length}문항을 접수 등록했습니다. 현재 저장 ${saved.length}문항.`, "ok");
+      renderAssign();
+    });
+
+    refreshButton.addEventListener("click", renderAssign);
+
+    async function readPdfText(file) {
+      const data = new Uint8Array(await file.arrayBuffer());
+      const pdf = await pdfjsLib.getDocument({ data }).promise;
+      const pages = [];
+      for (let pageNo = 1; pageNo <= pdf.numPages; pageNo += 1) {
+        const page = await pdf.getPage(pageNo);
+        const content = await page.getTextContent();
+        pages.push(linesFromTextContent(content).join("\n"));
+      }
+      return pages.join("\n");
+    }
+
+    function linesFromTextContent(content) {
+      const lineMap = new Map();
+      for (const item of content.items || []) {
+        const text = String(item.str || "").trim();
+        if (!text) continue;
+        const y = Math.round(item.transform[5]);
+        const x = item.transform[4];
+        if (!lineMap.has(y)) lineMap.set(y, []);
+        lineMap.get(y).push({ x, text });
+      }
+      return Array.from(lineMap.entries())
+        .sort((a, b) => b[0] - a[0])
+        .map(([, items]) => items.sort((a, b) => a.x - b.x).map((item) => item.text).join(" ").replace(/\s+/g, " ").trim())
+        .filter(Boolean);
+    }
+
+    function renderPreview() {
+      registerButton.disabled = !state.previewRows.length;
+      if (!state.previewRows.length) {
+        previewTarget.innerHTML = '<p class="empty">표시할 문항이 없습니다.</p>';
+        return;
+      }
+      const summary = QuestionSplit.summarize(state.previewRows);
+      const summaryHtml = summary.length ? `<table class="preview-table"><thead><tr><th>파일명</th><th>파일명의 문항 수</th><th>뽑은 문항 수</th><th>마지막 번호</th><th>번호 연속</th><th>일치</th></tr></thead><tbody>${summary.map((row) => `
+        <tr><td>${esc(row.파일명)}</td><td>${esc(row["파일명의 문항 수"])}</td><td>${esc(row["뽑은 문항 수"])}</td><td>${esc(row["마지막 번호"])}</td><td>${esc(row["번호 연속"])}</td><td>${esc(row.일치)}</td></tr>`).join("")}</tbody></table>` : "";
+      const rowsHtml = `<table class="preview-table"><thead><tr><th>파일명</th><th>위원회</th><th>의원</th><th>제출기한</th><th>문항번호</th><th>요구내용</th><th>세부항목</th><th>비고</th></tr></thead><tbody>${state.previewRows.map((row) => `
+        <tr>
+          <td>${esc(row.파일명)}</td>
+          <td>${esc(row.위원회)}</td>
+          <td>${esc(row.의원)}</td>
+          <td>${esc(row.제출기한)}</td>
+          <td>${esc(row.문항번호)}</td>
+          <td class="request-text">${esc(row.요구내용)}</td>
+          <td>${esc(row.세부항목)}</td>
+          <td>${esc(row.비고)}</td>
+        </tr>`).join("")}</tbody></table>`;
+      previewTarget.innerHTML = `${summaryHtml}${rowsHtml}`;
+    }
+
+    function renderAssign() {
+      if (!state.ready) return;
+      const cases = Common.readCases().map((item) => {
+        const normalized = Common.normalizeQuestion(item);
+        const candidates = AssignEngine.classify(normalized.요구내용);
+        if (!normalized.후보.length) normalized.후보 = candidates;
+        if (!normalized.주관과 && candidates[0]) normalized.주관과 = candidates[0].과;
+        return normalized;
+      });
+      if (!cases.length) {
+        assignTarget.innerHTML = '<p class="empty">접수 등록된 문항이 없습니다.</p>';
+        return;
+      }
+      assignTarget.innerHTML = `<table><thead><tr><th>상태</th><th>의원·문항</th><th>요구내용</th><th>후보 3순위</th><th>주관 과</th><th>협조 과</th><th>확정</th></tr></thead><tbody>${cases.map(renderAssignRow).join("")}</tbody></table>`;
+      wireAssignRows(cases);
+    }
+
+    function renderAssignRow(item) {
+      const candidates = item.후보 && item.후보.length ? item.후보 : AssignEngine.classify(item.요구내용);
+      const main = item.주관과 || (candidates[0] ? candidates[0].과 : "");
+      const candidateHtml = candidates.length
+        ? `<ol class="candidate-list">${candidates.map((candidate) => `<li>${esc(Common.formatCandidate(candidate))}</li>`).join("")}</ol>`
+        : '<span class="muted">확인필요</span>';
+      const departmentOptions = state.departments.map((dept) => `<option value="${esc(dept)}"${dept === main ? " selected" : ""}>${esc(dept)}</option>`).join("");
+      const supportOptions = state.departments.map((dept) => `<option value="${esc(dept)}"${item.협조과.includes(dept) ? " selected" : ""}>${esc(dept)}</option>`).join("");
+      const method = item.상태 === "배분확정" ? (item.확정방법 || "규칙") : "";
+      return `<tr data-id="${esc(item.id)}">
+        <td><span class="status-pill ${item.상태 === "배분확정" ? "done" : ""}">${esc(item.상태)}</span>${method ? `<div class="small">${esc(method)}</div>` : ""}</td>
+        <td>${esc(item.의원)}-${esc(item.문항번호)}<div class="small">${esc(item.파일명)}</div></td>
+        <td class="request-text">${esc(item.요구내용)}${item.세부항목 ? `<div class="small">${esc(item.세부항목)}</div>` : ""}${item.비고 ? `<div class="small">${esc(item.비고)}</div>` : ""}</td>
+        <td>${candidateHtml}</td>
+        <td><select data-main>${departmentOptions}</select></td>
+        <td><select data-support multiple>${supportOptions}</select></td>
+        <td class="confirm-cell"><button type="button" data-confirm>확정</button></td>
+      </tr>`;
+    }
+
+    function wireAssignRows(cases) {
+      const byId = new Map(cases.map((item) => [item.id, item]));
+      assignTarget.querySelectorAll("[data-confirm]").forEach((button) => {
+        button.addEventListener("click", () => {
+          const row = button.closest("tr");
+          const item = byId.get(row.dataset.id);
+          if (!item) return;
+          const main = row.querySelector("[data-main]").value;
+          const supports = Array.from(row.querySelector("[data-support]").selectedOptions).map((option) => option.value).filter((dept) => dept !== main);
+          const first = item.후보 && item.후보[0] ? item.후보[0].과 : "";
+          item.주관과 = main;
+          item.협조과 = supports;
+          item.상태 = "배분확정";
+          item.확정방법 = main === first ? "규칙" : "수정";
+          item.기록 = [...(item.기록 || []), { 일시: Common.todayStamp(), 작업: "배분확정", 주관과: main, 협조과: supports, 확정방법: item.확정방법 }];
+          const next = Common.readCases().map((stored) => (stored.id === item.id ? item : stored));
+          Common.writeCases(next);
+          Common.setStatus(`${item.의원}-${item.문항번호} 문항을 ${main}로 배분확정했습니다.`, "ok");
+          renderAssign();
+        });
+      });
+    }
+
+    function esc(value) {
+      return Common.escapeHtml(value);
+    }
+  </script>
+</body>
+</html>

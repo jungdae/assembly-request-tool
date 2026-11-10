@@ -1,0 +1,32 @@
+# secrets
+.env
+.env.*
+
+# dependencies
+node_modules/
+
+# local/generated files
+__pycache__/
+*.pyc
+*.log
+tmp/
+temp/
+output/
+outputs/
+result/
+results/
+dist/
+build/
+/org.json
+/rules_보강.csv
+/data/문항목록.csv
+
+# source/sample data not needed for the public Pages site
+/원문/
+/부서회신/
+/data/요구자료_접수대장_2026국감_520건.csv
+/data/요구자료_접수대장_2026국감_520건.xlsx
+/data/검증용_접수대장_120건.csv
+
+# local document references
+*.hwpx
