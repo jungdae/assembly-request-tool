@@ -13,11 +13,20 @@
   };
 
   function parseCsv(text) {
+    const source = String(text || "").replace(/^\uFEFF/, "");
+    const papa = typeof globalThis !== "undefined" ? globalThis.Papa : null;
+    if (papa && typeof papa.parse === "function") {
+      const result = papa.parse(source, { skipEmptyLines: true });
+      if (result.errors && result.errors.length) {
+        throw new Error(`CSV 읽기 실패: ${result.errors[0].message}`);
+      }
+      return result.data;
+    }
+
     const rows = [];
     let row = [];
     let cell = "";
     let inQuotes = false;
-    const source = String(text || "").replace(/^\uFEFF/, "");
 
     for (let i = 0; i < source.length; i += 1) {
       const char = source[i];

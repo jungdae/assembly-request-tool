@@ -4,6 +4,7 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>배분</title>
+  <link rel="stylesheet" href="lib/tabulator.min.css">
   <style>
     :root {
       --bg: #f6f7f9;
@@ -83,6 +84,23 @@
       min-height: 38px;
     }
     select[multiple] { min-height: 74px; }
+    .search-box {
+      min-width: 280px;
+      border: 1px solid var(--line);
+      border-radius: 6px;
+      padding: 8px;
+      font: inherit;
+    }
+    .tabulator {
+      border: 0;
+      font-size: 13px;
+    }
+    .tabulator .tabulator-header {
+      border-bottom: 1px solid var(--line);
+    }
+    .tabulator .tabulator-row .tabulator-cell {
+      white-space: normal;
+    }
     button {
       border: 1px solid var(--accent);
       background: var(--accent);
@@ -175,6 +193,7 @@
       <div class="section-head">
         <h2>② 배분</h2>
         <div class="actions">
+          <input class="search-box" type="search" data-search placeholder="의원·문항·요구내용 검색">
           <button class="secondary" type="button" data-refresh>새로고침</button>
         </div>
       </div>
@@ -182,6 +201,10 @@
     </section>
   </main>
 
+  <script src="lib/papaparse.min.js"></script>
+  <script src="lib/xlsx.full.min.js"></script>
+  <script src="lib/fuse.min.js"></script>
+  <script src="lib/tabulator.min.js"></script>
   <script src="common.js"></script>
   <script src="split.js"></script>
   <script src="engine.js"></script>
@@ -194,6 +217,8 @@
       previewRows: [],
       departments: [],
       ready: false,
+      assignQuery: "",
+      previewTable: null,
     };
 
     const pdfInput = document.querySelector("#pdfFiles");
@@ -202,6 +227,7 @@
     const loadSampleButton = document.querySelector("[data-load-sample]");
     const registerButton = document.querySelector("[data-register]");
     const refreshButton = document.querySelector("[data-refresh]");
+    const searchInput = document.querySelector("[data-search]");
     const previewTarget = document.querySelector("[data-preview]");
     const assignTarget = document.querySelector("[data-assign]");
 
@@ -286,6 +312,10 @@
     });
 
     refreshButton.addEventListener("click", renderAssign);
+    searchInput.addEventListener("input", () => {
+      state.assignQuery = searchInput.value.trim();
+      renderAssign();
+    });
 
     async function readPdfText(file) {
       const data = new Uint8Array(await file.arrayBuffer());
@@ -324,18 +354,27 @@
       const summary = QuestionSplit.summarize(state.previewRows);
       const summaryHtml = summary.length ? `<table class="preview-table"><thead><tr><th>파일명</th><th>파일명의 문항 수</th><th>뽑은 문항 수</th><th>마지막 번호</th><th>번호 연속</th><th>일치</th></tr></thead><tbody>${summary.map((row) => `
         <tr><td>${esc(row.파일명)}</td><td>${esc(row["파일명의 문항 수"])}</td><td>${esc(row["뽑은 문항 수"])}</td><td>${esc(row["마지막 번호"])}</td><td>${esc(row["번호 연속"])}</td><td>${esc(row.일치)}</td></tr>`).join("")}</tbody></table>` : "";
-      const rowsHtml = `<table class="preview-table"><thead><tr><th>파일명</th><th>위원회</th><th>의원</th><th>제출기한</th><th>문항번호</th><th>요구내용</th><th>세부항목</th><th>비고</th></tr></thead><tbody>${state.previewRows.map((row) => `
-        <tr>
-          <td>${esc(row.파일명)}</td>
-          <td>${esc(row.위원회)}</td>
-          <td>${esc(row.의원)}</td>
-          <td>${esc(row.제출기한)}</td>
-          <td>${esc(row.문항번호)}</td>
-          <td class="request-text">${esc(row.요구내용)}</td>
-          <td>${esc(row.세부항목)}</td>
-          <td>${esc(row.비고)}</td>
-        </tr>`).join("")}</tbody></table>`;
-      previewTarget.innerHTML = `${summaryHtml}${rowsHtml}`;
+      previewTarget.innerHTML = `${summaryHtml}<div data-preview-table></div>`;
+      if (window.Tabulator) {
+        state.previewTable = new Tabulator(previewTarget.querySelector("[data-preview-table]"), {
+          data: state.previewRows,
+          layout: "fitDataStretch",
+          height: "420px",
+          columns: [
+            { title: "파일명", field: "파일명", width: 230 },
+            { title: "위원회", field: "위원회", width: 150 },
+            { title: "의원", field: "의원", width: 90 },
+            { title: "제출기한", field: "제출기한", width: 110 },
+            { title: "문항번호", field: "문항번호", width: 90 },
+            { title: "요구내용", field: "요구내용", width: 360 },
+            { title: "세부항목", field: "세부항목", width: 240 },
+            { title: "비고", field: "비고", width: 220 },
+          ],
+        });
+      } else {
+        previewTarget.insertAdjacentHTML("beforeend", `<table class="preview-table"><thead><tr><th>파일명</th><th>위원회</th><th>의원</th><th>제출기한</th><th>문항번호</th><th>요구내용</th><th>세부항목</th><th>비고</th></tr></thead><tbody>${state.previewRows.map((row) => `
+          <tr><td>${esc(row.파일명)}</td><td>${esc(row.위원회)}</td><td>${esc(row.의원)}</td><td>${esc(row.제출기한)}</td><td>${esc(row.문항번호)}</td><td class="request-text">${esc(row.요구내용)}</td><td>${esc(row.세부항목)}</td><td>${esc(row.비고)}</td></tr>`).join("")}</tbody></table>`);
+      }
     }
 
     function renderAssign() {
@@ -347,12 +386,31 @@
         if (!normalized.주관과 && candidates[0]) normalized.주관과 = candidates[0].과;
         return normalized;
       });
+      const filtered = filterCases(cases);
       if (!cases.length) {
         assignTarget.innerHTML = '<p class="empty">접수 등록된 문항이 없습니다.</p>';
         return;
       }
-      assignTarget.innerHTML = `<table><thead><tr><th>상태</th><th>의원·문항</th><th>요구내용</th><th>후보 3순위</th><th>주관 과</th><th>협조 과</th><th>확정</th></tr></thead><tbody>${cases.map(renderAssignRow).join("")}</tbody></table>`;
+      if (!filtered.length) {
+        assignTarget.innerHTML = '<p class="empty">검색 결과가 없습니다.</p>';
+        return;
+      }
+      assignTarget.innerHTML = `<table><thead><tr><th>상태</th><th>의원·문항</th><th>요구내용</th><th>후보 3순위</th><th>주관 과</th><th>협조 과</th><th>확정</th></tr></thead><tbody>${filtered.map(renderAssignRow).join("")}</tbody></table>`;
       wireAssignRows(cases);
+    }
+
+    function filterCases(cases) {
+      if (!state.assignQuery) return cases;
+      if (!window.Fuse) {
+        const needle = state.assignQuery.toLowerCase();
+        return cases.filter((item) => `${item.의원} ${item.문항번호} ${item.요구내용} ${item.세부항목} ${item.비고}`.toLowerCase().includes(needle));
+      }
+      const fuse = new Fuse(cases, {
+        keys: ["의원", "문항번호", "요구내용", "세부항목", "비고", "주관과"],
+        threshold: 0.35,
+        ignoreLocation: true,
+      });
+      return fuse.search(state.assignQuery).map((result) => result.item);
     }
 
     function renderAssignRow(item) {

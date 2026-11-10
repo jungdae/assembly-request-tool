@@ -72,6 +72,12 @@
     th { color: var(--muted); font-weight: 700; background: #fafbfc; }
     .empty { color: var(--muted); padding: 18px 0; }
     .actions { margin-top: 16px; display: flex; gap: 8px; }
+    .status-chart {
+      margin-bottom: 18px;
+    }
+    .chart-box {
+      height: 220px;
+    }
     button, .button {
       border: 1px solid var(--accent);
       background: var(--accent);
@@ -109,6 +115,10 @@
       <div class="metric"><span>배분확정</span><strong data-assigned>0</strong></div>
       <div class="metric"><span>확인필요</span><strong data-review>0</strong></div>
     </div>
+    <section class="status-chart">
+      <h2>상태 현황</h2>
+      <div class="chart-box"><canvas data-status-chart></canvas></div>
+    </section>
     <section>
       <h2>최근 접수 문항</h2>
       <div data-recent></div>
@@ -118,13 +128,40 @@
       </div>
     </section>
   </main>
+  <script src="lib/chart.umd.min.js"></script>
   <script src="common.js"></script>
   <script>
     const cases = Common.readCases();
+    const counts = {
+      접수: cases.filter((item) => item.상태 === "접수").length,
+      배분확정: cases.filter((item) => item.상태 === "배분확정").length,
+      확인필요: cases.filter((item) => item.상태 === "확인필요").length,
+    };
     document.querySelector("[data-total]").textContent = cases.length;
-    document.querySelector("[data-received]").textContent = cases.filter((item) => item.상태 === "접수").length;
-    document.querySelector("[data-assigned]").textContent = cases.filter((item) => item.상태 === "배분확정").length;
-    document.querySelector("[data-review]").textContent = cases.filter((item) => item.상태 === "확인필요").length;
+    document.querySelector("[data-received]").textContent = counts.접수;
+    document.querySelector("[data-assigned]").textContent = counts.배분확정;
+    document.querySelector("[data-review]").textContent = counts.확인필요;
+
+    if (window.Chart) {
+      new Chart(document.querySelector("[data-status-chart]"), {
+        type: "bar",
+        data: {
+          labels: Object.keys(counts),
+          datasets: [{
+            label: "문항 수",
+            data: Object.values(counts),
+            backgroundColor: ["#5b8def", "#0f6b5f", "#b06000"],
+            borderWidth: 0,
+          }],
+        },
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          plugins: { legend: { display: false } },
+          scales: { y: { beginAtZero: true, ticks: { precision: 0 } } },
+        },
+      });
+    }
 
     const recent = cases.slice(-8).reverse();
     const target = document.querySelector("[data-recent]");

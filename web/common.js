@@ -4,11 +4,19 @@
   const STORAGE_KEY = "assembly.assign.cases.v1";
 
   function parseCsv(text) {
+    const source = String(text || "").replace(/^\uFEFF/, "");
+    if (root.Papa && typeof root.Papa.parse === "function") {
+      const result = root.Papa.parse(source, { skipEmptyLines: true });
+      if (result.errors && result.errors.length) {
+        throw new Error(`CSV 읽기 실패: ${result.errors[0].message}`);
+      }
+      return result.data;
+    }
+
     const rows = [];
     let row = [];
     let cell = "";
     let inQuotes = false;
-    const source = String(text || "").replace(/^\uFEFF/, "");
 
     for (let i = 0; i < source.length; i += 1) {
       const char = source[i];
@@ -64,6 +72,13 @@
 
   async function loadCsv(url) {
     return rowsToObjects(parseCsv(await loadText(url)));
+  }
+
+  async function readWorkbook(file) {
+    if (!root.XLSX || typeof root.XLSX.read !== "function") {
+      throw new Error("엑셀 파일을 읽으려면 SheetJS(xlsx.full.min.js)가 필요합니다.");
+    }
+    return root.XLSX.read(await file.arrayBuffer(), { type: "array" });
   }
 
   function readCases() {
@@ -150,6 +165,7 @@
     rowsToObjects,
     loadText,
     loadCsv,
+    readWorkbook,
     readCases,
     writeCases,
     clearCases,
