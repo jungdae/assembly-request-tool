@@ -1,0 +1,12 @@
+{
+  "name": "assembly-request-tool",
+  "private": true,
+  "type": "commonjs",
+  "scripts": {
+    "test:api": "node test_api.js",
+    "test:engine": "node test_engine.js"
+  },
+  "dependencies": {
+    "@vercel/blob": "latest"
+  }
+}

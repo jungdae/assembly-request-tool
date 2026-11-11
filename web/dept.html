@@ -1,0 +1,327 @@
+<!doctype html>
+<html lang="ko">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>현업 회신</title>
+  <style>
+    :root {
+      --bg: #f6f7f9;
+      --line: #d8dde6;
+      --text: #1d2733;
+      --muted: #647084;
+      --accent: #0f6b5f;
+      --accent-weak: #e5f3f0;
+      --danger: #a43b3b;
+      --white: #fff;
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      background: var(--bg);
+      color: var(--text);
+      font-family: "Segoe UI", "Malgun Gothic", Arial, sans-serif;
+      letter-spacing: 0;
+    }
+    header {
+      background: var(--white);
+      border-bottom: 1px solid var(--line);
+      padding: 14px 24px;
+      display: flex;
+      justify-content: space-between;
+      gap: 16px;
+      align-items: center;
+      position: sticky;
+      top: 0;
+      z-index: 10;
+    }
+    h1 { margin: 0; font-size: 20px; font-weight: 700; }
+    nav { display: flex; gap: 8px; flex-wrap: wrap; }
+    nav a {
+      color: var(--text);
+      text-decoration: none;
+      border: 1px solid var(--line);
+      background: var(--white);
+      padding: 8px 12px;
+      border-radius: 6px;
+      font-size: 14px;
+    }
+    nav a.active { border-color: var(--accent); background: var(--accent-weak); color: var(--accent); font-weight: 700; }
+    main { padding: 18px 24px 32px; max-width: 1180px; margin: 0 auto; }
+    .storage-mode, [data-status], .small { color: var(--muted); font-size: 13px; }
+    [data-status] { min-height: 22px; margin-bottom: 12px; }
+    [data-status][data-tone="error"] { color: var(--danger); font-weight: 700; }
+    [data-status][data-tone="ok"] { color: var(--accent); font-weight: 700; }
+    .toolbar, .case-card {
+      background: var(--white);
+      border: 1px solid var(--line);
+      border-radius: 8px;
+    }
+    .toolbar {
+      padding: 14px;
+      display: flex;
+      gap: 12px;
+      align-items: end;
+      flex-wrap: wrap;
+      margin-bottom: 14px;
+    }
+    label { display: block; color: var(--muted); font-size: 13px; font-weight: 700; margin-bottom: 6px; }
+    select, input[type="file"], textarea {
+      border: 1px solid var(--line);
+      border-radius: 6px;
+      background: var(--white);
+      padding: 8px;
+      font: inherit;
+      min-height: 38px;
+    }
+    select { min-width: 240px; }
+    textarea { width: 100%; min-height: 72px; resize: vertical; }
+    button {
+      border: 1px solid var(--accent);
+      background: var(--accent);
+      color: #fff;
+      border-radius: 6px;
+      padding: 9px 12px;
+      font: inherit;
+      cursor: pointer;
+      min-height: 38px;
+    }
+    button.secondary { background: var(--white); color: var(--accent); }
+    .cards { display: grid; gap: 12px; }
+    .case-card { padding: 16px; }
+    .case-head {
+      display: flex;
+      justify-content: space-between;
+      gap: 12px;
+      border-bottom: 1px solid var(--line);
+      padding-bottom: 10px;
+      margin-bottom: 12px;
+    }
+    h2 { margin: 0; font-size: 17px; }
+    .status-pill {
+      display: inline-flex;
+      border: 1px solid var(--line);
+      border-radius: 999px;
+      padding: 3px 8px;
+      background: #fff;
+      white-space: nowrap;
+      font-size: 13px;
+    }
+    .request-text { white-space: pre-wrap; line-height: 1.55; }
+    .history-list { margin: 4px 0 0; padding-left: 16px; color: var(--muted); font-size: 12px; }
+    .grid {
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) minmax(260px, 360px);
+      gap: 14px;
+    }
+    .reply-box, .reassign-box {
+      border-top: 1px solid var(--line);
+      padding-top: 12px;
+      margin-top: 12px;
+    }
+    .actions { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 8px; }
+    .empty {
+      background: var(--white);
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      padding: 18px;
+      color: var(--muted);
+    }
+    @media (max-width: 860px) {
+      header { align-items: flex-start; flex-direction: column; }
+      main { padding: 14px; }
+      .grid { grid-template-columns: 1fr; }
+      select { min-width: 100%; }
+    }
+  </style>
+</head>
+<body>
+  <header>
+    <h1>현업 회신</h1>
+    <nav>
+      <a href="index.html">시작 화면</a>
+      <a href="assign.html">배분</a>
+      <a class="active" href="dept.html">현업 회신</a>
+      <a href="#" aria-disabled="true">취합</a>
+    </nav>
+  </header>
+  <main>
+    <p class="storage-mode" data-storage-mode></p>
+    <div data-status>자료를 읽는 중입니다.</div>
+    <div class="toolbar">
+      <div>
+        <label for="department">내 과</label>
+        <select id="department" data-department></select>
+      </div>
+      <button type="button" data-refresh>새로고침</button>
+    </div>
+    <div class="cards" data-cases></div>
+  </main>
+
+  <script src="lib/papaparse.min.js"></script>
+  <script src="lib/xlsx.full.min.js"></script>
+  <script src="common.js"></script>
+  <script src="flow.js"></script>
+  <script>
+    const state = {
+      departments: [],
+      historyRows: [],
+      selectedDept: "",
+      replyRows: new Map(),
+    };
+
+    const deptSelect = document.querySelector("[data-department]");
+    const cardsTarget = document.querySelector("[data-cases]");
+
+    init();
+
+    async function init() {
+      try {
+        Common.showStorageMode();
+        const orgRows = await Common.loadCsv("data/A부_조직도_26개과.csv");
+        state.departments = orgRows.map((row) => row.과).filter(Boolean);
+        state.historyRows = await Common.loadHistory();
+        deptSelect.innerHTML = state.departments.map((dept) => `<option value="${esc(dept)}">${esc(dept)}</option>`).join("");
+        state.selectedDept = state.departments[0] || "";
+        deptSelect.value = state.selectedDept;
+        Common.setStatus("조직도와 과거 이력을 읽었습니다.", "ok");
+        await render();
+      } catch (error) {
+        Common.setStatus(error.message, "error");
+      }
+    }
+
+    deptSelect.addEventListener("change", async () => {
+      state.selectedDept = deptSelect.value;
+      await render();
+    });
+    document.querySelector("[data-refresh]").addEventListener("click", () => render());
+
+    async function render() {
+      const cases = (await Common.readCases()).map(Common.normalizeQuestion);
+      const rows = cases.filter((item) => assignedTo(item, state.selectedDept));
+      if (!rows.length) {
+        cardsTarget.innerHTML = '<p class="empty">선택한 과에 배분된 문항이 없습니다.</p>';
+        return;
+      }
+      cardsTarget.innerHTML = rows.map(renderCard).join("");
+      wireCards(rows);
+    }
+
+    function assignedTo(item, dept) {
+      if (!["배분확정", "회신중", "보완요청", "회신완료"].includes(item.상태)) return false;
+      return item.주관과 === dept || (item.협조과 || []).includes(dept);
+    }
+
+    function renderCard(item) {
+      const historyHtml = Common.renderHistory(Common.historyFor(item, state.historyRows));
+      const reply = item.과별회신 && item.과별회신[state.selectedDept];
+      const repliedHtml = reply ? `<div class="small">제출 기록: ${esc(reply.파일명 || "")} · ${esc(reply.일시 || "")}</div>` : "";
+      return `<section class="case-card" data-id="${esc(item.id)}">
+        <div class="case-head">
+          <div>
+            <h2>${esc(item.의원)}-${esc(item.문항번호)}</h2>
+            <div class="small">${esc(item.파일명)} · 주관 ${esc(item.주관과 || "")}${item.협조과.length ? ` · 협조 ${esc(item.협조과.join(", "))}` : ""}</div>
+          </div>
+          <span class="status-pill">${esc(item.상태)}</span>
+        </div>
+        <div class="grid">
+          <div>
+            <div class="request-text">${esc(item.요구내용)}</div>
+            ${item.세부항목 ? `<div class="small">${esc(item.세부항목)}</div>` : ""}
+            ${item.비고 ? `<div class="small">${esc(item.비고)}</div>` : ""}
+          </div>
+          <div>${historyHtml}</div>
+        </div>
+        <div class="reply-box">
+          <label>회신 엑셀 올리기</label>
+          <input type="file" accept=".xlsx,.xls,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet,application/vnd.ms-excel" data-reply-file>
+          <label>메모</label>
+          <textarea data-memo placeholder="자료 없음, 기준 설명 등"></textarea>
+          ${repliedHtml}
+          <div class="actions"><button type="button" data-submit-reply>회신 제출</button></div>
+        </div>
+        <div class="reassign-box">
+          <label>재배정 요청 사유</label>
+          <textarea data-reason placeholder="소관이 아닌 이유를 적어 주세요."></textarea>
+          <label>희망 과</label>
+          <select data-wish>
+            <option value="">선택 안 함</option>
+            ${state.departments.map((dept) => `<option value="${esc(dept)}">${esc(dept)}</option>`).join("")}
+          </select>
+          <div class="actions"><button class="secondary" type="button" data-request-reassign>재배정 요청</button></div>
+        </div>
+      </section>`;
+    }
+
+    function wireCards(items) {
+      const byId = new Map(items.map((item) => [item.id, item]));
+      cardsTarget.querySelectorAll(".case-card").forEach((card) => {
+        const item = byId.get(card.dataset.id);
+        const fileInput = card.querySelector("[data-reply-file]");
+        fileInput.addEventListener("change", async () => {
+          const file = fileInput.files && fileInput.files[0];
+          if (!file) return;
+          try {
+            const rows = await readWorkbookRows(file);
+            state.replyRows.set(item.id, { fileName: file.name, rows });
+            Common.setStatus(`${file.name}에서 ${rows.length}행을 읽었습니다.`, "ok");
+          } catch (error) {
+            Common.setStatus(error.message, "error");
+          }
+        });
+
+        card.querySelector("[data-submit-reply]").addEventListener("click", async () => {
+          try {
+            const reply = state.replyRows.get(item.id) || { fileName: "", rows: [] };
+            await Common.applyRequest({
+              작업: "회신",
+              id: item.id,
+              과: state.selectedDept,
+              파일명: reply.fileName,
+              행: reply.rows,
+              메모: card.querySelector("[data-memo]").value,
+            }, state.departments);
+            Common.setStatus(`${item.의원}-${item.문항번호} 회신을 제출했습니다.`, "ok");
+            await render();
+          } catch (error) {
+            Common.setStatus(error.message, "error");
+          }
+        });
+
+        card.querySelector("[data-request-reassign]").addEventListener("click", async () => {
+          try {
+            await Common.applyRequest({
+              작업: "재배정요청",
+              id: item.id,
+              과: state.selectedDept,
+              사유: card.querySelector("[data-reason]").value,
+              희망과: card.querySelector("[data-wish]").value,
+            }, state.departments);
+            Common.setStatus(`${item.의원}-${item.문항번호} 재배정요청을 보냈습니다.`, "ok");
+            await render();
+          } catch (error) {
+            Common.setStatus(error.message, "error");
+          }
+        });
+      });
+    }
+
+    async function readWorkbookRows(file) {
+      const workbook = await Common.readWorkbook(file);
+      const sheetName = workbook.SheetNames[0];
+      if (!sheetName) throw new Error("엑셀 파일에 시트가 없습니다.");
+      const rows = XLSX.utils.sheet_to_json(workbook.Sheets[sheetName], {
+        header: 1,
+        defval: "",
+        raw: false,
+      });
+      return Common.rowsToObjects(rows.filter((row) => row.some((value) => String(value).trim())));
+    }
+
+    function esc(value) {
+      return Common.escapeHtml(value);
+    }
+  </script>
+</body>
+</html>

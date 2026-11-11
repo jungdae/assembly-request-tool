@@ -44,6 +44,7 @@
       font-size: 14px;
     }
     nav a.active { border-color: var(--accent); background: var(--accent-weak); color: var(--accent); font-weight: 700; }
+    .storage-mode { color: var(--muted); font-size: 13px; }
     main { padding: 24px; max-width: 1180px; margin: 0 auto; }
     .summary {
       display: grid;
@@ -104,16 +105,17 @@
     <nav>
       <a class="active" href="index.html">시작 화면</a>
       <a href="assign.html">배분</a>
-      <a href="#" aria-disabled="true">현업 회신</a>
+      <a href="dept.html">현업 회신</a>
       <a href="#" aria-disabled="true">취합</a>
     </nav>
   </header>
   <main>
+    <p class="storage-mode" data-storage-mode></p>
     <div class="summary">
       <div class="metric"><span>전체 문항</span><strong data-total>0</strong></div>
       <div class="metric"><span>접수</span><strong data-received>0</strong></div>
       <div class="metric"><span>배분확정</span><strong data-assigned>0</strong></div>
-      <div class="metric"><span>확인필요</span><strong data-review>0</strong></div>
+      <div class="metric"><span>재배정요청</span><strong data-review>0</strong></div>
     </div>
     <section class="status-chart">
       <h2>상태 현황</h2>
@@ -131,55 +133,62 @@
   <script src="lib/chart.umd.min.js"></script>
   <script src="common.js"></script>
   <script>
-    const cases = Common.readCases();
-    const counts = {
-      접수: cases.filter((item) => item.상태 === "접수").length,
-      배분확정: cases.filter((item) => item.상태 === "배분확정").length,
-      확인필요: cases.filter((item) => item.상태 === "확인필요").length,
-    };
-    document.querySelector("[data-total]").textContent = cases.length;
-    document.querySelector("[data-received]").textContent = counts.접수;
-    document.querySelector("[data-assigned]").textContent = counts.배분확정;
-    document.querySelector("[data-review]").textContent = counts.확인필요;
+    init();
 
-    if (window.Chart) {
-      new Chart(document.querySelector("[data-status-chart]"), {
-        type: "bar",
-        data: {
-          labels: Object.keys(counts),
-          datasets: [{
-            label: "문항 수",
-            data: Object.values(counts),
-            backgroundColor: ["#5b8def", "#0f6b5f", "#b06000"],
-            borderWidth: 0,
-          }],
-        },
-        options: {
-          responsive: true,
-          maintainAspectRatio: false,
-          plugins: { legend: { display: false } },
-          scales: { y: { beginAtZero: true, ticks: { precision: 0 } } },
-        },
-      });
+    async function init() {
+      Common.showStorageMode();
+      const cases = await Common.readCases();
+      const counts = {
+        접수: cases.filter((item) => item.상태 === "접수").length,
+        배분확정: cases.filter((item) => item.상태 === "배분확정").length,
+        회신중: cases.filter((item) => item.상태 === "회신중").length,
+        회신완료: cases.filter((item) => item.상태 === "회신완료").length,
+        재배정요청: cases.filter((item) => item.상태 === "재배정요청").length,
+      };
+      document.querySelector("[data-total]").textContent = cases.length;
+      document.querySelector("[data-received]").textContent = counts.접수;
+      document.querySelector("[data-assigned]").textContent = counts.배분확정;
+      document.querySelector("[data-review]").textContent = counts.재배정요청;
+
+      if (window.Chart) {
+        new Chart(document.querySelector("[data-status-chart]"), {
+          type: "bar",
+          data: {
+            labels: Object.keys(counts),
+            datasets: [{
+              label: "문항 수",
+              data: Object.values(counts),
+              backgroundColor: ["#5b8def", "#0f6b5f", "#b06000", "#5c6bc0", "#a43b3b"],
+              borderWidth: 0,
+            }],
+          },
+          options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: { legend: { display: false } },
+            scales: { y: { beginAtZero: true, ticks: { precision: 0 } } },
+          },
+        });
+      }
+
+      const recent = cases.slice(-8).reverse();
+      const target = document.querySelector("[data-recent]");
+      if (!recent.length) {
+        target.innerHTML = '<p class="empty">저장된 문항이 없습니다.</p>';
+      } else {
+        target.innerHTML = `<table><thead><tr><th>상태</th><th>의원·문항</th><th>요구내용</th><th>주관 과</th></tr></thead><tbody>${recent.map((item) => `
+          <tr>
+            <td>${Common.escapeHtml(item.상태)}</td>
+            <td>${Common.escapeHtml(item.의원)}-${Common.escapeHtml(item.문항번호)}</td>
+            <td>${Common.escapeHtml(item.요구내용)}</td>
+            <td>${Common.escapeHtml(item.주관과 || "")}</td>
+          </tr>`).join("")}</tbody></table>`;
+      }
     }
 
-    const recent = cases.slice(-8).reverse();
-    const target = document.querySelector("[data-recent]");
-    if (!recent.length) {
-      target.innerHTML = '<p class="empty">저장된 문항이 없습니다.</p>';
-    } else {
-      target.innerHTML = `<table><thead><tr><th>상태</th><th>의원·문항</th><th>요구내용</th><th>주관 과</th></tr></thead><tbody>${recent.map((item) => `
-        <tr>
-          <td>${Common.escapeHtml(item.상태)}</td>
-          <td>${Common.escapeHtml(item.의원)}-${Common.escapeHtml(item.문항번호)}</td>
-          <td>${Common.escapeHtml(item.요구내용)}</td>
-          <td>${Common.escapeHtml(item.주관과 || "")}</td>
-        </tr>`).join("")}</tbody></table>`;
-    }
-
-    document.querySelector("[data-clear]").addEventListener("click", () => {
+    document.querySelector("[data-clear]").addEventListener("click", async () => {
       if (!confirm("브라우저에 저장된 접수·배분 기록을 지울까요?")) return;
-      Common.clearCases();
+      await Common.clearCases();
       location.reload();
     });
   </script>

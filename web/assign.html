@@ -50,6 +50,7 @@
     }
     nav a.active { border-color: var(--accent); background: var(--accent-weak); color: var(--accent); font-weight: 700; }
     main { padding: 18px 24px 32px; max-width: 1440px; margin: 0 auto; }
+    .storage-mode { color: var(--muted); font-size: 13px; margin: 0 0 10px; }
     .toolbar, section {
       background: var(--white);
       border: 1px solid var(--line);
@@ -140,6 +141,8 @@
     .candidate-list { margin: 0; padding-left: 18px; }
     .request-text { max-width: 420px; white-space: pre-wrap; }
     .small { font-size: 12px; color: var(--muted); margin-top: 4px; }
+    .history-list { margin: 4px 0 0; padding-left: 16px; color: var(--muted); font-size: 12px; }
+    .reassign-box { border-left: 3px solid var(--danger); padding-left: 8px; margin-top: 6px; color: var(--danger); }
     .confirm-cell { min-width: 92px; }
     .actions { display: flex; gap: 8px; flex-wrap: wrap; }
     .empty { padding: 18px; color: var(--muted); }
@@ -156,12 +159,13 @@
     <nav>
       <a href="index.html">시작 화면</a>
       <a class="active" href="assign.html">배분</a>
-      <a href="#" aria-disabled="true">현업 회신</a>
+      <a href="dept.html">현업 회신</a>
       <a href="#" aria-disabled="true">취합</a>
     </nav>
   </header>
 
   <main>
+    <p class="storage-mode" data-storage-mode></p>
     <div data-status>자료를 읽는 중입니다.</div>
 
     <div class="toolbar">
@@ -208,6 +212,7 @@
   <script src="common.js"></script>
   <script src="split.js"></script>
   <script src="engine.js"></script>
+  <script src="flow.js"></script>
   <script type="module">
     import * as pdfjsLib from "./lib/pdf.min.mjs";
 
@@ -216,6 +221,7 @@
     const state = {
       previewRows: [],
       departments: [],
+      historyRows: [],
       ready: false,
       assignQuery: "",
       previewTable: null,
@@ -238,9 +244,11 @@
         await AssignEngine.loadFromUrls("data/rules_보강.csv", "data/A부_조직도_26개과.csv");
         const orgRows = await Common.loadCsv("data/A부_조직도_26개과.csv");
         state.departments = orgRows.map((row) => row.과).filter(Boolean);
+        state.historyRows = await Common.loadHistory();
         state.ready = true;
+        Common.showStorageMode();
         Common.setStatus("보강 기준표와 조직도를 읽었습니다.", "ok");
-        renderAssign();
+        await renderAssign();
       } catch (error) {
         Common.setStatus(error.message, "error");
       }
@@ -291,27 +299,32 @@
       }
     });
 
-    registerButton.addEventListener("click", () => {
+    registerButton.addEventListener("click", async () => {
       if (!state.previewRows.length) return;
-      const withCandidates = state.previewRows.map((row) => {
-        const normalized = Common.normalizeQuestion(row);
-        const candidates = AssignEngine.classify(normalized.요구내용);
-        return {
-          ...normalized,
-          후보: candidates,
-          주관과: normalized.주관과 || (candidates[0] ? candidates[0].과 : ""),
-          기록: [
-            ...(normalized.기록 || []),
-            { 일시: Common.todayStamp(), 작업: "접수", 메모: "브라우저 접수 등록" },
-          ],
-        };
-      });
-      const saved = Common.mergeCases(withCandidates);
-      Common.setStatus(`${withCandidates.length}문항을 접수 등록했습니다. 현재 저장 ${saved.length}문항.`, "ok");
-      renderAssign();
+      try {
+        let saved = [];
+        for (const row of state.previewRows) {
+          const normalized = Common.normalizeQuestion(row);
+          const candidates = AssignEngine.classify(normalized.요구내용);
+          const result = await Common.applyRequest({
+            작업: "접수",
+            문항: {
+              ...normalized,
+              후보: candidates,
+              주관과: normalized.주관과 || (candidates[0] ? candidates[0].과 : ""),
+            },
+            메모: "브라우저 접수 등록",
+          }, state.departments);
+          saved = result.cases || [];
+        }
+        Common.setStatus(`${state.previewRows.length}문항을 접수 등록했습니다. 현재 저장 ${saved.length}문항.`, "ok");
+        await renderAssign();
+      } catch (error) {
+        Common.setStatus(error.message, "error");
+      }
     });
 
-    refreshButton.addEventListener("click", renderAssign);
+    refreshButton.addEventListener("click", () => renderAssign());
     searchInput.addEventListener("input", () => {
       state.assignQuery = searchInput.value.trim();
       renderAssign();
@@ -393,9 +406,9 @@
       }
     }
 
-    function renderAssign() {
+    async function renderAssign() {
       if (!state.ready) return;
-      const cases = Common.readCases().map((item) => {
+      const cases = (await Common.readCases()).map((item) => {
         const normalized = Common.normalizeQuestion(item);
         const candidates = AssignEngine.classify(normalized.요구내용);
         if (!normalized.후보.length) normalized.후보 = candidates;
@@ -411,7 +424,7 @@
         assignTarget.innerHTML = '<p class="empty">검색 결과가 없습니다.</p>';
         return;
       }
-      assignTarget.innerHTML = `<table><thead><tr><th>상태</th><th>의원·문항</th><th>요구내용</th><th>후보 3순위</th><th>주관 과</th><th>협조 과</th><th>확정</th></tr></thead><tbody>${filtered.map(renderAssignRow).join("")}</tbody></table>`;
+      assignTarget.innerHTML = `<table><thead><tr><th>상태</th><th>의원·문항</th><th>요구내용</th><th>후보 3순위</th><th>과거 이력</th><th>주관 과</th><th>협조 과</th><th>확정</th></tr></thead><tbody>${filtered.map(renderAssignRow).join("")}</tbody></table>`;
       wireAssignRows(cases);
     }
 
@@ -435,14 +448,19 @@
       const candidateHtml = candidates.length
         ? `<ol class="candidate-list">${candidates.map((candidate) => `<li>${esc(Common.formatCandidate(candidate))}</li>`).join("")}</ol>`
         : '<span class="muted">확인필요</span>';
+      const historyHtml = Common.renderHistory(Common.historyFor({ ...item, 후보: candidates }, state.historyRows));
+      const reassignHtml = item.상태 === "재배정요청" && item.재배정
+        ? `<div class="reassign-box"><strong>재배정 사유</strong><div>${esc(item.재배정.사유 || "")}</div>${item.재배정.희망과 ? `<div class="small">희망 과: ${esc(item.재배정.희망과)}</div>` : ""}</div>`
+        : "";
       const departmentOptions = state.departments.map((dept) => `<option value="${esc(dept)}"${dept === main ? " selected" : ""}>${esc(dept)}</option>`).join("");
       const supportOptions = state.departments.map((dept) => `<option value="${esc(dept)}"${item.협조과.includes(dept) ? " selected" : ""}>${esc(dept)}</option>`).join("");
       const method = item.상태 === "배분확정" ? (item.확정방법 || "규칙") : "";
       return `<tr data-id="${esc(item.id)}">
         <td><span class="status-pill ${item.상태 === "배분확정" ? "done" : ""}">${esc(item.상태)}</span>${method ? `<div class="small">${esc(method)}</div>` : ""}</td>
         <td>${esc(item.의원)}-${esc(item.문항번호)}<div class="small">${esc(item.파일명)}</div></td>
-        <td class="request-text">${esc(item.요구내용)}${item.세부항목 ? `<div class="small">${esc(item.세부항목)}</div>` : ""}${item.비고 ? `<div class="small">${esc(item.비고)}</div>` : ""}</td>
+        <td class="request-text">${esc(item.요구내용)}${item.세부항목 ? `<div class="small">${esc(item.세부항목)}</div>` : ""}${item.비고 ? `<div class="small">${esc(item.비고)}</div>` : ""}${reassignHtml}</td>
         <td>${candidateHtml}</td>
+        <td>${historyHtml}</td>
         <td><select data-main>${departmentOptions}</select></td>
         <td><select data-support multiple>${supportOptions}</select></td>
         <td class="confirm-cell"><button type="button" data-confirm>확정</button></td>
@@ -452,22 +470,27 @@
     function wireAssignRows(cases) {
       const byId = new Map(cases.map((item) => [item.id, item]));
       assignTarget.querySelectorAll("[data-confirm]").forEach((button) => {
-        button.addEventListener("click", () => {
+        button.addEventListener("click", async () => {
           const row = button.closest("tr");
           const item = byId.get(row.dataset.id);
           if (!item) return;
           const main = row.querySelector("[data-main]").value;
           const supports = Array.from(row.querySelector("[data-support]").selectedOptions).map((option) => option.value).filter((dept) => dept !== main);
           const first = item.후보 && item.후보[0] ? item.후보[0].과 : "";
-          item.주관과 = main;
-          item.협조과 = supports;
-          item.상태 = "배분확정";
-          item.확정방법 = main === first ? "규칙" : "수정";
-          item.기록 = [...(item.기록 || []), { 일시: Common.todayStamp(), 작업: "배분확정", 주관과: main, 협조과: supports, 확정방법: item.확정방법 }];
-          const next = Common.readCases().map((stored) => (stored.id === item.id ? item : stored));
-          Common.writeCases(next);
-          Common.setStatus(`${item.의원}-${item.문항번호} 문항을 ${main}로 배분확정했습니다.`, "ok");
-          renderAssign();
+          try {
+            await Common.applyRequest({
+              작업: "배분",
+              id: item.id,
+              주관과: main,
+              협조과: supports,
+              확정방법: main === first ? "규칙" : "수정",
+              후보: item.후보,
+            }, state.departments);
+            Common.setStatus(`${item.의원}-${item.문항번호} 문항을 ${main}로 배분확정했습니다.`, "ok");
+            await renderAssign();
+          } catch (error) {
+            Common.setStatus(error.message, "error");
+          }
         });
       });
     }
