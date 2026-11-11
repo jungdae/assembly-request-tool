@@ -137,14 +137,14 @@ function statusError(status, message) {
 function createBlobStore() {
   return {
     async read() {
-      const { list } = await loadBlob();
-      const listed = await list({ prefix: CASES_PATH, limit: 10 });
-      const blob = (listed.blobs || []).find((item) => item.pathname === CASES_PATH);
+      const { get } = await loadBlob();
+      const blob = await get(CASES_PATH, { access: "private" });
       if (!blob) return [];
-      const response = await fetch(blob.downloadUrl || blob.url, { cache: "no-store" });
-      if (response.status === 404) return [];
-      if (!response.ok) throw new Error(`cases.json 읽기 실패: ${response.status}`);
-      const data = await response.json();
+      if (blob.statusCode !== 200) {
+        throw new Error(`cases.json 읽기 실패: ${blob.statusCode}`);
+      }
+      const raw = await new Response(blob.stream).text();
+      const data = JSON.parse(raw);
       return Array.isArray(data) ? data : [];
     },
     async write(cases) {
