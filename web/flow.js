@@ -210,6 +210,8 @@
       과: clean(candidate.과),
       점수: candidate.점수 === undefined ? "" : candidate.점수,
       근거키워드: clean(candidate.근거키워드),
+      근거: clean(candidate.근거),
+      출처: clean(candidate.출처),
     };
   }
 

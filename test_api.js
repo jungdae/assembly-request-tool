@@ -50,7 +50,21 @@ function pass(actual, expectedStatus, expectedState) {
 
 async function main() {
   const store = createMemoryStore();
-  const handler = app.createHandler({ store, orgData: org });
+  const fakeOpenAI = createFakeOpenAI([
+    {
+      후보: [
+        { 과: "디지털정책과", 근거: "디지털전환 사업 소관입니다." },
+        { 과: "없는과", 근거: "목록 밖 과라 제거되어야 합니다." },
+        { 과: "정보화담당관", 근거: "정보화 시스템과 관련됩니다." },
+      ],
+      해당없음: false,
+    },
+    {
+      후보: [],
+      해당없음: true,
+    },
+  ]);
+  const handler = app.createHandler({ store, orgData: org, openaiClient: fakeOpenAI });
   const id = "테스트.pdf::김테스트::1";
 
   const tests = [
@@ -59,6 +73,45 @@ async function main() {
       기대: "200",
       실행: () => call(handler, "GET"),
       확인: (result) => result.status === 200 && Array.isArray(result.body) && result.body.length === 0,
+    },
+    {
+      이름: "AI추천 목록 밖 과 제거",
+      기대: "200 후보 2",
+      실행: () => call(handler, "POST", {
+        작업: "AI추천",
+        요구내용: "최근 3년간 디지털전환 시스템 개선 현황",
+      }),
+      확인: (result) => (
+        result.status === 200 &&
+        result.body.후보.length === 2 &&
+        result.body.후보[0].과 === "디지털정책과" &&
+        result.body.후보.every((item) => item.과 !== "없는과") &&
+        fakeOpenAI.lastPayload.model === "gpt-4o-mini" &&
+        fakeOpenAI.lastPayload.temperature === 0 &&
+        fakeOpenAI.lastPayload.response_format.type === "json_object"
+      ),
+    },
+    {
+      이름: "AI추천 해당없음",
+      기대: "200 해당없음",
+      실행: () => call(handler, "POST", {
+        작업: "AI추천",
+        요구내용: "조직도에 없는 매우 특수한 요구",
+      }),
+      확인: (result) => result.status === 200 && result.body.해당없음 === true && result.body.후보.length === 0,
+    },
+    {
+      이름: "AI추천 키 없음",
+      기대: "500",
+      실행: () => call(app.createHandler({
+        store,
+        orgData: org,
+        openaiClient: app.createOpenAIClient({ apiKey: "" }),
+      }), "POST", {
+        작업: "AI추천",
+        요구내용: "최근 3년간 정보화 사업 현황",
+      }),
+      확인: (result) => result.status === 500 && /OPENAI_API_KEY/.test(result.body.error),
     },
     {
       이름: "접수",
@@ -184,6 +237,25 @@ async function main() {
   console.log("첫 문항 상태:", store.snapshot()[0] && store.snapshot()[0].상태);
 
   if (!ok) process.exitCode = 1;
+}
+
+function createFakeOpenAI(responses) {
+  return {
+    lastPayload: null,
+    async createChatCompletion(payload) {
+      this.lastPayload = payload;
+      const body = responses.shift() || { 후보: [], 해당없음: true };
+      return {
+        choices: [
+          {
+            message: {
+              content: JSON.stringify(body),
+            },
+          },
+        ],
+      };
+    },
+  };
 }
 
 main().catch((error) => {

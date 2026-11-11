@@ -139,6 +139,7 @@
     .status-pill.done { border-color: var(--accent); background: var(--accent-weak); color: var(--accent); font-weight: 700; }
     .muted { color: var(--muted); }
     .candidate-list { margin: 0; padding-left: 18px; }
+    .candidate-list li.ai-candidate { color: #5b4bc4; font-weight: 700; }
     .request-text { max-width: 420px; white-space: pre-wrap; }
     .small { font-size: 12px; color: var(--muted); margin-top: 4px; }
     .history-list { margin: 4px 0 0; padding-left: 16px; color: var(--muted); font-size: 12px; }
@@ -446,8 +447,8 @@
       const candidates = item.후보 && item.후보.length ? item.후보 : AssignEngine.classify(item.요구내용);
       const main = item.주관과 || (candidates[0] ? candidates[0].과 : "");
       const candidateHtml = candidates.length
-        ? `<ol class="candidate-list">${candidates.map((candidate) => `<li>${esc(Common.formatCandidate(candidate))}</li>`).join("")}</ol>`
-        : '<span class="muted">확인필요</span>';
+        ? renderCandidateList(candidates)
+        : '<span class="muted">확인필요</span><div class="small"><button class="secondary" type="button" data-ai>AI 추천</button></div>';
       const historyHtml = Common.renderHistory(Common.historyFor({ ...item, 후보: candidates }, state.historyRows));
       const reassignHtml = item.상태 === "재배정요청" && item.재배정
         ? `<div class="reassign-box"><strong>재배정 사유</strong><div>${esc(item.재배정.사유 || "")}</div>${item.재배정.희망과 ? `<div class="small">희망 과: ${esc(item.재배정.희망과)}</div>` : ""}</div>`
@@ -459,7 +460,7 @@
         <td><span class="status-pill ${item.상태 === "배분확정" ? "done" : ""}">${esc(item.상태)}</span>${method ? `<div class="small">${esc(method)}</div>` : ""}</td>
         <td>${esc(item.의원)}-${esc(item.문항번호)}<div class="small">${esc(item.파일명)}</div></td>
         <td class="request-text">${esc(item.요구내용)}${item.세부항목 ? `<div class="small">${esc(item.세부항목)}</div>` : ""}${item.비고 ? `<div class="small">${esc(item.비고)}</div>` : ""}${reassignHtml}</td>
-        <td>${candidateHtml}</td>
+        <td data-candidate-cell>${candidateHtml}</td>
         <td>${historyHtml}</td>
         <td><select data-main>${departmentOptions}</select></td>
         <td><select data-support multiple>${supportOptions}</select></td>
@@ -469,6 +470,41 @@
 
     function wireAssignRows(cases) {
       const byId = new Map(cases.map((item) => [item.id, item]));
+      assignTarget.querySelectorAll("[data-ai]").forEach((button) => {
+        button.addEventListener("click", async () => {
+          const row = button.closest("tr");
+          const item = byId.get(row.dataset.id);
+          if (!item) return;
+          try {
+            button.disabled = true;
+            Common.setStatus(`${item.의원}-${item.문항번호} 문항의 AI 후보를 요청하는 중입니다.`);
+            const result = await Common.applyRequest({
+              작업: "AI추천",
+              요구내용: item.요구내용,
+            }, state.departments);
+            const aiCandidates = (result.후보 || []).map((candidate) => ({
+              과: candidate.과,
+              근거: candidate.근거,
+              근거키워드: candidate.근거,
+              출처: "AI",
+            }));
+            item.후보 = aiCandidates;
+            if (aiCandidates[0]) {
+              item.주관과 = aiCandidates[0].과;
+              row.querySelector("[data-main]").value = aiCandidates[0].과;
+              row.querySelector("[data-candidate-cell]").innerHTML = renderCandidateList(aiCandidates);
+              Common.setStatus(`${item.의원}-${item.문항번호} AI 후보 ${aiCandidates.length}개를 받았습니다.`, "ok");
+            } else {
+              row.querySelector("[data-candidate-cell]").innerHTML = '<span class="muted">AI 해당없음</span>';
+              Common.setStatus(`${item.의원}-${item.문항번호} 문항은 AI도 해당 과를 찾지 못했습니다.`, "error");
+            }
+          } catch (error) {
+            button.disabled = false;
+            Common.setStatus(error.message, "error");
+          }
+        });
+      });
+
       assignTarget.querySelectorAll("[data-confirm]").forEach((button) => {
         button.addEventListener("click", async () => {
           const row = button.closest("tr");
@@ -477,13 +513,15 @@
           const main = row.querySelector("[data-main]").value;
           const supports = Array.from(row.querySelector("[data-support]").selectedOptions).map((option) => option.value).filter((dept) => dept !== main);
           const first = item.후보 && item.후보[0] ? item.후보[0].과 : "";
+          const firstSource = item.후보 && item.후보[0] ? item.후보[0].출처 : "";
+          const method = main === first ? (firstSource === "AI" ? "AI" : "규칙") : "수정";
           try {
             await Common.applyRequest({
               작업: "배분",
               id: item.id,
               주관과: main,
               협조과: supports,
-              확정방법: main === first ? "규칙" : "수정",
+              확정방법: method,
               후보: item.후보,
             }, state.departments);
             Common.setStatus(`${item.의원}-${item.문항번호} 문항을 ${main}로 배분확정했습니다.`, "ok");
@@ -493,6 +531,10 @@
           }
         });
       });
+    }
+
+    function renderCandidateList(candidates) {
+      return `<ol class="candidate-list">${candidates.map((candidate) => `<li class="${candidate.출처 === "AI" ? "ai-candidate" : ""}">${esc(Common.formatCandidate(candidate))}</li>`).join("")}</ol>`;
     }
 
     function esc(value) {

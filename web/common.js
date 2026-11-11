@@ -182,6 +182,9 @@
       if (!response.ok) throw new Error(data.error || `서버 요청 실패: ${response.status}`);
       return data;
     }
+    if (request && request.작업 === "AI추천") {
+      throw new Error("AI 추천은 Vercel 배포 환경에서 OPENAI_API_KEY가 설정되어야 사용할 수 있습니다.");
+    }
     if (!root.Flow || typeof root.Flow.apply !== "function") {
       throw new Error("상태 변경에는 flow.js가 필요합니다.");
     }
@@ -233,6 +236,7 @@
 
   function formatCandidate(candidate) {
     if (!candidate) return "";
+    if (candidate.출처 === "AI") return `${candidate.과} (AI, ${candidate.근거 || candidate.근거키워드 || "근거 없음"})`;
     return `${candidate.과} (${candidate.점수}, ${candidate.근거키워드})`;
   }
 
