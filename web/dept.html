@@ -119,6 +119,9 @@
       padding-top: 12px;
       margin-top: 12px;
     }
+    .check-panel { margin-top: 10px; padding: 10px 12px; border-radius: 6px; background: #f4f6f9; font-size: 13px; }
+    .check-panel.has-issues { background: #fff4e5; color: #704900; }
+    .check-panel ul { margin: 6px 0 0; padding-left: 20px; }
     .actions { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 8px; }
     .empty {
       background: var(--white);
@@ -142,7 +145,7 @@
       <a href="index.html">시작 화면</a>
       <a href="assign.html">배분</a>
       <a class="active" href="dept.html">현업 회신</a>
-      <a href="#" aria-disabled="true">취합</a>
+      <a href="collect.html">취합</a>
     </nav>
   </header>
   <main>
@@ -162,6 +165,7 @@
   <script src="lib/xlsx.full.min.js"></script>
   <script src="common.js"></script>
   <script src="flow.js"></script>
+  <script src="validate.js"></script>
   <script>
     const state = {
       departments: [],
@@ -210,6 +214,7 @@
 
     function assignedTo(item, dept) {
       if (!["배분확정", "회신중", "보완요청", "회신완료"].includes(item.상태)) return false;
+      if (item.상태 === "보완요청" && item.보완.과 !== dept) return false;
       return item.주관과 === dept || (item.협조과 || []).includes(dept);
     }
 
@@ -217,6 +222,30 @@
       const historyHtml = Common.renderHistory(Common.historyFor(item, state.historyRows));
       const reply = item.과별회신 && item.과별회신[state.selectedDept];
       const repliedHtml = reply ? `<div class="small">제출 기록: ${esc(reply.파일명 || "")} · ${esc(reply.일시 || "")}</div>` : "";
+      const supplementHtml = item.상태 === "보완요청" && item.보완
+        ? `<div class="check-panel has-issues"><strong>보완 회신 요청</strong><div>사유: ${esc(item.보완.사유 || "")}</div></div>`
+        : "";
+      const replyFormHtml = item.상태 === "회신완료"
+        ? '<div class="reply-box"><strong>담당 과 전체 회신 완료</strong>' + repliedHtml + "</div>"
+        : `<div class="reply-box">
+          <label>회신 엑셀 올리기</label>
+          <input type="file" accept=".xlsx,.xls,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet,application/vnd.ms-excel" data-reply-file>
+          <div class="check-panel" data-reply-check hidden></div>
+          <label>메모</label>
+          <textarea data-memo placeholder="자료 없음, 기준 설명 등"></textarea>
+          ${repliedHtml}
+          <div class="actions"><button type="button" data-submit-reply>회신 제출</button></div>
+        </div>`;
+      const reassignFormHtml = item.상태 === "회신완료" ? "" : `<div class="reassign-box">
+        <label>재배정 요청 사유</label>
+        <textarea data-reason placeholder="소관이 아닌 이유를 적어 주세요."></textarea>
+        <label>희망 과</label>
+        <select data-wish>
+          <option value="">선택 안 함</option>
+          ${state.departments.map((dept) => `<option value="${esc(dept)}">${esc(dept)}</option>`).join("")}
+        </select>
+        <div class="actions"><button class="secondary" type="button" data-request-reassign>재배정 요청</button></div>
+      </div>`;
       return `<section class="case-card" data-id="${esc(item.id)}">
         <div class="case-head">
           <div>
@@ -233,24 +262,9 @@
           </div>
           <div>${historyHtml}</div>
         </div>
-        <div class="reply-box">
-          <label>회신 엑셀 올리기</label>
-          <input type="file" accept=".xlsx,.xls,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet,application/vnd.ms-excel" data-reply-file>
-          <label>메모</label>
-          <textarea data-memo placeholder="자료 없음, 기준 설명 등"></textarea>
-          ${repliedHtml}
-          <div class="actions"><button type="button" data-submit-reply>회신 제출</button></div>
-        </div>
-        <div class="reassign-box">
-          <label>재배정 요청 사유</label>
-          <textarea data-reason placeholder="소관이 아닌 이유를 적어 주세요."></textarea>
-          <label>희망 과</label>
-          <select data-wish>
-            <option value="">선택 안 함</option>
-            ${state.departments.map((dept) => `<option value="${esc(dept)}">${esc(dept)}</option>`).join("")}
-          </select>
-          <div class="actions"><button class="secondary" type="button" data-request-reassign>재배정 요청</button></div>
-        </div>
+        ${supplementHtml}
+        ${replyFormHtml}
+        ${reassignFormHtml}
       </section>`;
     }
 
@@ -259,27 +273,35 @@
       cardsTarget.querySelectorAll(".case-card").forEach((card) => {
         const item = byId.get(card.dataset.id);
         const fileInput = card.querySelector("[data-reply-file]");
-        fileInput.addEventListener("change", async () => {
+        if (fileInput) fileInput.addEventListener("change", async () => {
           const file = fileInput.files && fileInput.files[0];
           if (!file) return;
           try {
             const rows = await readWorkbookRows(file);
-            state.replyRows.set(item.id, { fileName: file.name, rows });
-            Common.setStatus(`${file.name}에서 ${rows.length}행을 읽었습니다.`, "ok");
+            const check = Validate.validateReply(item.요구내용, rows);
+            state.replyRows.set(item.id, { fileName: file.name, rows, 확인필요: check.확인필요 });
+            renderReplyCheck(card.querySelector("[data-reply-check]"), check);
+            Common.setStatus(`${file.name}에서 ${check.자료행수}개 자료행을 읽었습니다. 확인필요 ${check.확인필요.length}건.`, check.확인필요.length ? "error" : "ok");
           } catch (error) {
             Common.setStatus(error.message, "error");
           }
         });
 
-        card.querySelector("[data-submit-reply]").addEventListener("click", async () => {
+        const submitButton = card.querySelector("[data-submit-reply]");
+        if (submitButton) submitButton.addEventListener("click", async () => {
           try {
             const reply = state.replyRows.get(item.id) || { fileName: "", rows: [] };
+            if (reply.확인필요 && reply.확인필요.length) {
+              const summary = reply.확인필요.map((issue) => `${issue.항목}: ${issue.내용}`).join("\n");
+              if (!confirm(`확인필요 ${reply.확인필요.length}건이 있습니다. 내용을 확인했고 회신을 제출할까요?\n\n${summary}`)) return;
+            }
             await Common.applyRequest({
               작업: "회신",
               id: item.id,
               과: state.selectedDept,
               파일명: reply.fileName,
               행: reply.rows,
+              확인필요: reply.확인필요 || [],
               메모: card.querySelector("[data-memo]").value,
             }, state.departments);
             Common.setStatus(`${item.의원}-${item.문항번호} 회신을 제출했습니다.`, "ok");
@@ -289,7 +311,8 @@
           }
         });
 
-        card.querySelector("[data-request-reassign]").addEventListener("click", async () => {
+        const reassignButton = card.querySelector("[data-request-reassign]");
+        if (reassignButton) reassignButton.addEventListener("click", async () => {
           try {
             await Common.applyRequest({
               작업: "재배정요청",
@@ -311,12 +334,22 @@
       const workbook = await Common.readWorkbook(file);
       const sheetName = workbook.SheetNames[0];
       if (!sheetName) throw new Error("엑셀 파일에 시트가 없습니다.");
-      const rows = XLSX.utils.sheet_to_json(workbook.Sheets[sheetName], {
+      return XLSX.utils.sheet_to_json(workbook.Sheets[sheetName], {
         header: 1,
         defval: "",
         raw: false,
       });
-      return Common.rowsToObjects(rows.filter((row) => row.some((value) => String(value).trim())));
+    }
+
+    function renderReplyCheck(target, result) {
+      const issues = result.확인필요 || [];
+      target.hidden = false;
+      target.classList.toggle("has-issues", issues.length > 0);
+      const headerText = (result.머리글 || []).filter(Boolean).join(" · ") || "없음";
+      target.innerHTML = `<strong>${issues.length ? `확인필요 ${issues.length}건` : "점검 완료 · 확인필요 없음"}</strong>
+        <div>1행 요구 표시: ${esc(result.요구표시 || "없음")}</div>
+        <div>2행 머리글: ${esc(headerText)}</div>
+        ${issues.length ? `<ul>${issues.map((issue) => `<li>${esc(issue.항목)}${issue.행 !== "전체" ? ` · ${esc(issue.행)}행` : ""}: ${esc(issue.내용)}</li>`).join("")}</ul>` : ""}`;
     }
 
     function esc(value) {

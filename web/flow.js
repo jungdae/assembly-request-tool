@@ -54,8 +54,8 @@
     if (action === "배분") return assign(cases, request || {}, departments);
     if (action === "회신") return reply(cases, request || {}, departments);
     if (action === "재배정요청") return requestReassign(cases, request || {}, departments);
-    if (action === "보완요청") return notYet(400, "보완요청은 S8 취합 화면에서 추가합니다.");
-    if (action === "확정") return notYet(400, "확정은 S8 취합 화면에서 추가합니다.");
+    if (action === "보완요청") return requestSupplement(cases, request || {}, departments);
+    if (action === "확정") return finalize(cases, request || {});
     if (action === "AI추천") return notYet(400, "AI추천은 S7에서 추가합니다.");
     throw new FlowError(400, `알 수 없는 작업입니다: ${action}`);
   }
@@ -124,14 +124,59 @@
     const department = clean(request.과);
     assertDepartment(department, departments, "과");
     assertResponsible(item, department);
+    if (item.상태 === "보완요청" && department !== clean(item.보완.과)) {
+      throw new FlowError(403, `보완 회신 담당은 ${clean(item.보완.과)}입니다.`);
+    }
 
     item.과별회신 = isPlainObject(item.과별회신) ? item.과별회신 : {};
     item.과별회신[department] = sanitizeReply(request);
+    if (item.상태 === "보완요청") item.보완 = {};
     item.상태 = allResponsibleDepartments(item).every((dept) => item.과별회신[dept]) ? "회신완료" : "회신중";
     addLog(item, {
       작업: "회신",
       문항: item.id,
       과: department,
+    });
+    return result(replaceCase(cases, item), item);
+  }
+
+  function requestSupplement(cases, request, departments) {
+    const item = getCase(cases, request.id);
+    if (!["회신중", "회신완료"].includes(item.상태)) {
+      throw new FlowError(409, `${item.상태} 상태에서는 보완요청을 할 수 없습니다.`);
+    }
+
+    const department = clean(request.과);
+    const reason = clean(request.사유);
+    assertDepartment(department, departments, "과");
+    assertResponsible(item, department);
+    if (!reason) throw new FlowError(400, "보완요청 사유가 필요합니다.");
+
+    item.상태 = "보완요청";
+    item.보완 = { 과: department, 사유: reason, 일시: now() };
+    addLog(item, {
+      작업: "보완요청",
+      문항: item.id,
+      과: department,
+      사유: reason,
+    });
+    return result(replaceCase(cases, item), item);
+  }
+
+  function finalize(cases, request) {
+    const item = getCase(cases, request.id);
+    if (item.상태 !== "회신완료") {
+      throw new FlowError(409, `${item.상태} 상태에서는 확정할 수 없습니다.`);
+    }
+
+    const comment = clean(request.확정코멘트 || request.코멘트);
+    if (!comment) throw new FlowError(400, "확정 코멘트가 필요합니다.");
+    item.상태 = "확정";
+    item.확정코멘트 = comment;
+    addLog(item, {
+      작업: "확정",
+      문항: item.id,
+      코멘트: comment,
     });
     return result(replaceCase(cases, item), item);
   }

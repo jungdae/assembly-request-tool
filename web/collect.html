@@ -1,0 +1,415 @@
+<!doctype html>
+<html lang="ko">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>취합·검사</title>
+  <style>
+    :root { --bg:#f6f7f9; --line:#d8dde6; --text:#1d2733; --muted:#647084; --accent:#0f6b5f; --pale:#e5f3f0; --danger:#a43b3b; --warn:#fff4e5; --white:#fff; }
+    * { box-sizing:border-box; }
+    body { margin:0; background:var(--bg); color:var(--text); font-family:"Segoe UI","Malgun Gothic",Arial,sans-serif; }
+    header { position:sticky; top:0; z-index:5; background:var(--white); border-bottom:1px solid var(--line); padding:14px 24px; display:flex; justify-content:space-between; align-items:center; gap:16px; }
+    h1 { margin:0; font-size:20px; }
+    h2 { margin:0; font-size:17px; }
+    nav,.actions,.tabs { display:flex; flex-wrap:wrap; gap:8px; }
+    nav a { color:var(--text); text-decoration:none; border:1px solid var(--line); background:var(--white); padding:8px 12px; border-radius:6px; font-size:14px; }
+    nav a.active { border-color:var(--accent); background:var(--pale); color:var(--accent); font-weight:700; }
+    main { max-width:1600px; margin:0 auto; padding:18px 24px 36px; }
+    .storage-mode,.small,.muted { color:var(--muted); font-size:13px; }
+    [data-status] { min-height:22px; margin:8px 0 12px; color:var(--muted); }
+    [data-status][data-tone="error"] { color:var(--danger); font-weight:700; }
+    [data-status][data-tone="ok"] { color:var(--accent); font-weight:700; }
+    section,.metric,.toolbar { background:var(--white); border:1px solid var(--line); border-radius:8px; }
+    section { margin-top:14px; overflow:hidden; }
+    .section-head { padding:14px 16px; border-bottom:1px solid var(--line); display:flex; align-items:center; justify-content:space-between; gap:12px; flex-wrap:wrap; }
+    .toolbar { padding:14px; margin:14px 0; display:flex; align-items:end; gap:12px; flex-wrap:wrap; }
+    label { display:block; margin-bottom:6px; font-size:13px; font-weight:700; color:var(--muted); }
+    input[type=file],input[type=text],select,textarea { border:1px solid var(--line); border-radius:6px; padding:8px; font:inherit; background:white; min-height:38px; }
+    textarea { width:100%; min-height:58px; resize:vertical; }
+    button { border:1px solid var(--accent); background:var(--accent); color:white; border-radius:6px; padding:8px 11px; min-height:36px; font:inherit; cursor:pointer; }
+    button.secondary { background:white; color:var(--accent); }
+    button:disabled { opacity:.5; cursor:not-allowed; }
+    .tabs { margin:12px 0; }
+    .tabs button[aria-selected="true"] { background:#084d45; }
+    .summary { display:grid; grid-template-columns:repeat(auto-fit,minmax(125px,1fr)); gap:10px; }
+    .metric { padding:12px 14px; }
+    .metric span { display:block; color:var(--muted); font-size:13px; }
+    .metric strong { display:block; margin-top:6px; font-size:24px; }
+    .table-wrap { overflow:auto; max-height:68vh; }
+    table { width:100%; border-collapse:collapse; font-size:13px; }
+    .wide-table { min-width:1250px; }
+    th,td { border-bottom:1px solid var(--line); padding:9px; text-align:left; vertical-align:top; }
+    th { position:sticky; top:0; z-index:1; background:#fafbfc; color:var(--muted); }
+    .request { white-space:pre-wrap; min-width:220px; max-width:360px; }
+    .reply-cell { min-width:220px; max-width:440px; }
+    .reply-cell details { margin-top:4px; }
+    .reply-preview { max-height:230px; overflow:auto; margin-top:6px; }
+    .reply-preview table { min-width:400px; font-size:11px; }
+    .reply-preview th { position:static; }
+    .issue { color:#704900; background:var(--warn); padding:6px 8px; margin:4px 0; border-radius:5px; }
+    .issue-table { margin:10px 0; }
+    .ops { min-width:245px; }
+    .ops select,.ops textarea { width:100%; margin:3px 0 7px; }
+    .empty { padding:18px; color:var(--muted); }
+    .chart-box { height:610px; padding:12px 18px 18px; }
+    .check-summary { padding:12px 16px; }
+    @media(max-width:900px) { header { align-items:flex-start; flex-direction:column; } main { padding:14px; } .chart-box { height:700px; padding:6px; } }
+  </style>
+</head>
+<body>
+  <header>
+    <h1>취합·검사</h1>
+    <nav>
+      <a href="index.html">시작 화면</a>
+      <a href="assign.html">배분</a>
+      <a href="dept.html">현업 회신</a>
+      <a class="active" href="collect.html">취합</a>
+    </nav>
+  </header>
+  <main>
+    <p class="storage-mode" data-storage-mode></p>
+    <div data-status>자료를 읽는 중입니다.</div>
+    <div class="tabs">
+      <button type="button" data-tab="review" aria-selected="true">검사·확정</button>
+      <button type="button" class="secondary" data-tab="status" aria-selected="false">현황·제출본</button>
+      <button type="button" class="secondary" data-refresh>새로고침</button>
+    </div>
+
+    <div data-panel="review">
+      <section>
+        <div class="section-head">
+          <h2>과별 회신 취합</h2>
+          <span class="small">회신 내용과 확인필요를 검토하고 문항별로 처리합니다.</span>
+        </div>
+        <div class="table-wrap" data-review-table><p class="empty">저장된 문항이 없습니다.</p></div>
+      </section>
+      <section>
+        <div class="section-head"><h2>검증용 접수대장 CSV 점검</h2></div>
+        <div class="toolbar">
+          <div>
+            <label for="intake-file">검증용 접수대장 CSV</label>
+            <input id="intake-file" type="file" accept=".csv,text/csv">
+          </div>
+          <span class="small">선택한 파일은 브라우저에서만 읽으며 원본 파일을 수정하지 않습니다.</span>
+        </div>
+        <div class="check-summary" data-intake-summary></div>
+        <div class="table-wrap" data-intake-issues><p class="empty">CSV 파일을 선택해 주세요.</p></div>
+      </section>
+    </div>
+
+    <div data-panel="status" hidden>
+      <div class="summary" data-status-counts></div>
+      <section>
+        <div class="section-head"><h2>과별 배분·회신 현황</h2></div>
+        <div class="chart-box"><canvas data-dept-chart></canvas></div>
+      </section>
+      <section>
+        <div class="section-head">
+          <h2>내부 검토용 제출본</h2>
+          <div class="actions">
+            <button type="button" data-export-xlsx>제출본 엑셀</button>
+            <button type="button" class="secondary" data-export-md>제출본 Markdown</button>
+          </div>
+        </div>
+        <p class="check-summary muted">이 파일은 내부 검토용입니다. 국회 제출이나 외부 발송은 수행하지 않습니다.</p>
+      </section>
+    </div>
+  </main>
+
+  <script src="lib/papaparse.min.js"></script>
+  <script src="lib/xlsx.full.min.js"></script>
+  <script src="lib/chart.umd.min.js"></script>
+  <script src="common.js"></script>
+  <script src="flow.js"></script>
+  <script src="validate.js"></script>
+  <script>
+    const state = { cases: [], departments: [], chart: null };
+    const reviewTarget = document.querySelector("[data-review-table]");
+    const intakeTarget = document.querySelector("[data-intake-issues]");
+
+    init();
+    document.querySelector("[data-refresh]").addEventListener("click", () => loadData());
+    document.querySelectorAll("[data-tab]").forEach((button) => {
+      button.addEventListener("click", () => selectTab(button.dataset.tab));
+    });
+    document.querySelector("#intake-file").addEventListener("change", inspectIntakeFile);
+    document.querySelector("[data-export-xlsx]").addEventListener("click", exportWorkbook);
+    document.querySelector("[data-export-md]").addEventListener("click", exportMarkdown);
+
+    async function init() {
+      Common.showStorageMode();
+      await loadData();
+    }
+
+    async function loadData() {
+      try {
+        const orgRows = await Common.loadCsv("data/A부_조직도_26개과.csv");
+        state.departments = orgRows.map((row) => row.과).filter(Boolean);
+        state.cases = (await Common.readCases()).map(Common.normalizeQuestion);
+        renderReview();
+        renderStatus();
+        Common.setStatus("문항과 회신을 읽었습니다.", "ok");
+      } catch (error) {
+        Common.setStatus(error.message, "error");
+      }
+    }
+
+    function renderReview() {
+      if (!state.cases.length) {
+        reviewTarget.innerHTML = '<p class="empty">저장된 문항이 없습니다.</p>';
+        return;
+      }
+      const head = ["상태", "의원·문항", "요구내용", "회신과", "과별 회신", "확인필요", "처리"];
+      reviewTarget.innerHTML = '<table class="wide-table"><thead><tr>' + head.map((value) => "<th>" + esc(value) + "</th>").join("") +
+        "</tr></thead><tbody>" + state.cases.map(renderCaseRow).join("") + "</tbody></table>";
+      wireCaseActions();
+    }
+
+    function renderCaseRow(item) {
+      const depts = responsible(item);
+      const replyCell = depts.map((dept) => '<div><strong>' + esc(dept) + "</strong>" +
+        renderReply(item.과별회신 && item.과별회신[dept], dept) + "</div>").join('<hr>') || '<span class="muted">담당 과 없음</span>';
+      const issues = [];
+      Object.values(item.과별회신 || {}).forEach((reply) => {
+        (reply.확인필요 || []).forEach((issue) => issues.push(issue));
+      });
+      const issueCell = issues.length
+        ? '<td><strong class="issue">확인필요 ' + issues.length + "건</strong>" + issues.map((issue) => '<div class="small">' + esc(issue.항목 || "점검") + ": " + esc(issue.내용 || issue) + "</div>").join("") + "</td>"
+        : '<td class="muted">없음</td>';
+      return "<tr>" +
+        '<td>' + esc(item.상태) + (item.보완 && item.보완.과 ? '<div class="small">보완 대상: ' + esc(item.보완.과) + "<br>" + esc(item.보완.사유 || "") + "</div>" : "") + "</td>" +
+        "<td>" + esc(item.의원) + "-" + esc(item.문항번호) + '<div class="small">' + esc(item.파일명) + "</div></td>" +
+        '<td class="request">' + esc(item.요구내용) + (item.세부항목 ? '<div class="small">' + esc(item.세부항목) + "</div>" : "") + "</td>" +
+        '<td>' + (depts.length ? depts.map(esc).join(" · ") : '<span class="muted">—</span>') + "</td>" +
+        '<td class="reply-cell">' + replyCell + "</td>" + issueCell + '<td class="ops">' + renderActions(item) + "</td></tr>";
+    }
+
+    function renderReply(reply, department) {
+      if (!reply) return '<span class="muted">미회신 · ' + esc(department) + "</span>";
+      const rows = normalizeReplyRows(reply.행);
+      const dataCount = Math.max(0, rows.length - 2);
+      const title = (rows[0] || []).filter((value) => String(value ?? "").trim()).join(" ");
+      const note = reply.메모 ? '<div class="small">메모: ' + esc(reply.메모) + "</div>" : "";
+      const issues = (reply.확인필요 || []).length
+        ? '<div class="issue">확인필요 ' + reply.확인필요.length + "건</div>"
+        : '<div class="small">점검: 확인필요 없음</div>';
+      return "<strong>" + esc(reply.파일명 || "파일 없음") + "</strong>" +
+        '<div class="small">' + esc(reply.일시 || "") + " · 자료행 " + dataCount + "건</div>" +
+        (title ? '<div class="small">1행 요구 표시: ' + esc(title) + "</div>" : "") + note + issues +
+        (rows.length ? "<details><summary>회신 표 보기</summary>" + renderReplyTable(rows) + "</details>" : "");
+    }
+
+    function normalizeReplyRows(rows) {
+      if (!Array.isArray(rows) || !rows.length) return [];
+      if (Array.isArray(rows[0])) return rows;
+      if (rows[0] && typeof rows[0] === "object") {
+        const headers = Object.keys(rows[0]);
+        return [["회신 자료"], headers].concat(rows.map((row) => headers.map((key) => row[key] ?? "")));
+      }
+      return [];
+    }
+
+    function renderReplyTable(rows) {
+      const headers = rows[1] || [];
+      const body = rows.slice(2).filter((row) => row.some((value) => String(value ?? "").trim()));
+      return '<div class="reply-preview"><table><thead><tr>' + headers.map((value) => "<th>" + esc(value) + "</th>").join("") +
+        "</tr></thead><tbody>" + body.map((row) => "<tr>" + headers.map((_, index) => "<td>" + esc(row[index] ?? "") + "</td>").join("") + "</tr>").join("") +
+        "</tbody></table></div>";
+    }
+
+    function renderActions(item) {
+      const responsibleDepts = responsible(item);
+      let html = "";
+      if (["회신중", "회신완료"].includes(item.상태)) {
+        html += '<label>보완 대상 과</label><select data-supplement-dept="' + esc(item.id) + '">' +
+          responsibleDepts.map((dept) => '<option value="' + esc(dept) + '">' + esc(dept) + "</option>").join("") + "</select>" +
+          '<label>보완 사유</label><textarea data-supplement-reason="' + esc(item.id) + '" placeholder="보완이 필요한 내용을 적어 주세요."></textarea>' +
+          '<button class="secondary" type="button" data-supplement="' + esc(item.id) + '">보완요청</button>';
+      }
+      if (item.상태 === "회신완료") {
+        html += '<label style="margin-top:8px">확정 코멘트</label><textarea data-final-note="' + esc(item.id) + '" placeholder="확인한 내용을 적어 주세요."></textarea>' +
+          '<button type="button" data-finalize="' + esc(item.id) + '">확인 완료</button>';
+      }
+      return html || '<span class="muted">처리 대기</span>';
+    }
+
+    function wireCaseActions() {
+      document.querySelectorAll("[data-supplement]").forEach((button) => {
+        button.addEventListener("click", async () => {
+          const id = button.dataset.supplement;
+          const row = button.closest("tr");
+          const dept = row.querySelector("[data-supplement-dept]").value;
+          const reason = row.querySelector("[data-supplement-reason]").value.trim();
+          try {
+            await Common.applyRequest({ 작업: "보완요청", id: id, 과: dept, 사유: reason }, state.departments);
+            Common.setStatus(dept + "에 보완요청을 보냈습니다.", "ok");
+            await loadData();
+          } catch (error) { Common.setStatus(error.message, "error"); }
+        });
+      });
+      document.querySelectorAll("[data-finalize]").forEach((button) => {
+        button.addEventListener("click", async () => {
+          const id = button.dataset.finalize;
+          const row = button.closest("tr");
+          const item = state.cases.find((row) => row.id === id);
+          const issues = item ? Object.values(item.과별회신 || {}).flatMap((reply) => reply.확인필요 || []) : [];
+          const comment = row.querySelector("[data-final-note]").value.trim();
+          if (issues.length && !confirm("회신에 확인필요 " + issues.length + "건이 있습니다. 검토를 마치고 확정할까요?")) return;
+          try {
+            await Common.applyRequest({ 작업: "확정", id: id, 확정코멘트: comment }, state.departments);
+            Common.setStatus("문항을 확인 완료로 확정했습니다.", "ok");
+            await loadData();
+          } catch (error) { Common.setStatus(error.message, "error"); }
+        });
+      });
+    }
+
+    async function inspectIntakeFile(event) {
+      const file = event.target.files && event.target.files[0];
+      if (!file) return;
+      try {
+        const rows = Common.rowsToObjects(Common.parseCsv(await file.text()));
+        const result = Validate.validateIntake(rows, state.departments);
+        document.querySelector("[data-intake-summary]").textContent =
+          file.name + " · " + result.전체건수 + "건 · 확인필요 " + result.확인필요.length + "건";
+        if (!result.확인필요.length) {
+          intakeTarget.innerHTML = '<p class="empty">점검 항목에서 확인필요를 찾지 못했습니다. 원본 파일은 변경하지 않았습니다.</p>';
+        } else {
+          intakeTarget.innerHTML = '<table class="issue-table"><thead><tr><th>항목</th><th>CSV 행</th><th>내용</th></tr></thead><tbody>' +
+            result.확인필요.map((issue) => "<tr><td>" + esc(issue.항목) + "</td><td>" + esc(issue.행) + "</td><td>" + esc(issue.내용) + "</td></tr>").join("") +
+            "</tbody></table>";
+        }
+        Common.setStatus("검증용 접수대장 CSV를 읽기 전용으로 점검했습니다.", "ok");
+      } catch (error) { Common.setStatus(error.message, "error"); }
+    }
+
+    function renderStatus() {
+      const labels = ["접수", "배분확정", "회신중", "회신완료", "보완요청", "재배정요청", "확정"];
+      const counts = labels.map((status) => state.cases.filter((item) => item.상태 === status).length);
+      document.querySelector("[data-status-counts]").innerHTML = labels.map((status, index) =>
+        '<div class="metric"><span>' + esc(status) + '</span><strong>' + counts[index] + "</strong></div>").join("");
+
+      const allocated = state.departments.map((dept) => state.cases.filter((item) => responsible(item).includes(dept)).length);
+      const replied = state.departments.map((dept) => state.cases.filter((item) =>
+        responsible(item).includes(dept) && item.과별회신 && item.과별회신[dept]).length);
+      const canvas = document.querySelector("[data-dept-chart]");
+      if (!window.Chart) {
+        canvas.parentElement.innerHTML = '<p class="empty">Chart.js 파일을 읽지 못했습니다.</p>';
+        return;
+      }
+      if (state.chart) state.chart.destroy();
+      state.chart = new Chart(canvas, {
+        type: "bar",
+        data: {
+          labels: state.departments,
+          datasets: [
+            { label: "배분 문항", data: allocated, backgroundColor: "#5b8def" },
+            { label: "회신 제출", data: replied, backgroundColor: "#0f6b5f" },
+          ],
+        },
+        options: {
+          indexAxis: "y", responsive: true, maintainAspectRatio: false,
+          scales: { x: { beginAtZero: true, ticks: { precision: 0 } } },
+          plugins: { legend: { position: "top" } },
+        },
+      });
+    }
+
+    function makeExportRows() {
+      const records = [];
+      const fields = new Set();
+      state.cases.forEach((item) => {
+        const depts = responsible(item);
+        (depts.length ? depts : [""]).forEach((dept) => {
+          const reply = item.과별회신 && item.과별회신[dept];
+          const rows = normalizeReplyRows(reply && reply.행);
+          const headers = rows[1] || [];
+          headers.forEach((header) => { if (String(header).trim()) fields.add(String(header).trim()); });
+          const details = rows.slice(2).filter((row) => row.some((value) => String(value ?? "").trim()));
+          if (!details.length) details.push([]);
+          details.forEach((dataRow) => {
+            const record = {
+              파일명: item.파일명, 위원회: item.위원회, 의원: item.의원, 문항번호: item.문항번호,
+              제출기한: item.제출기한, 상태: item.상태, 요구내용: item.요구내용, 회신과: dept,
+              회신파일: reply ? reply.파일명 : "", 회신메모: reply ? reply.메모 : "",
+              확인필요: reply && reply.확인필요 && reply.확인필요.length ? reply.확인필요.map((issue) => issue.항목 + ": " + issue.내용).join(" / ") : "",
+            };
+            headers.forEach((header, index) => { record["회신자료_" + String(header).trim()] = dataRow[index] ?? ""; });
+            records.push(record);
+          });
+        });
+      });
+      return { records: records, fields: Array.from(fields) };
+    }
+
+    function exportWorkbook() {
+      if (!window.XLSX) { Common.setStatus("SheetJS 파일을 읽지 못했습니다.", "error"); return; }
+      const list = state.cases.map((item) => ({
+        파일명: item.파일명, 위원회: item.위원회, 의원: item.의원, 제출기한: item.제출기한,
+        문항번호: item.문항번호, 요구내용: item.요구내용, 상태: item.상태, 주관과: item.주관과,
+        협조과: item.협조과.join(", "), 확정코멘트: item.확정코멘트,
+      }));
+      const detail = makeExportRows();
+      const detailHeaders = ["파일명", "위원회", "의원", "문항번호", "제출기한", "상태", "요구내용", "회신과", "회신파일", "회신메모", "확인필요"]
+        .concat(detail.fields.map((field) => "회신자료_" + field));
+      const book = XLSX.utils.book_new();
+      XLSX.utils.book_append_sheet(book, XLSX.utils.json_to_sheet(list), "제출목록");
+      XLSX.utils.book_append_sheet(book, XLSX.utils.json_to_sheet(detail.records, { header: detailHeaders }), "문항별 취합표");
+      XLSX.writeFile(book, "내부검토용_제출본.xlsx");
+      Common.setStatus("내부 검토용 엑셀을 만들었습니다.", "ok");
+    }
+
+    function exportMarkdown() {
+      const lines = ["# 내부 검토용 제출본", "", "국회 제출 전 내부 확인을 위한 자료입니다.", ""];
+      state.cases.forEach((item) => {
+        lines.push("## " + item.의원 + " · 문항 " + item.문항번호, "");
+        lines.push("- 상태: " + item.상태);
+        lines.push("- 제출기한: " + item.제출기한);
+        lines.push("- 주관 과: " + item.주관과);
+        lines.push("- 협조 과: " + item.협조과.join(", "));
+        lines.push("", item.요구내용, "");
+        responsible(item).forEach((dept) => {
+          const reply = item.과별회신 && item.과별회신[dept];
+          lines.push("### 회신 과: " + dept);
+          if (!reply) { lines.push("미회신", ""); return; }
+          if (reply.메모) lines.push("메모: " + reply.메모, "");
+          const rows = normalizeReplyRows(reply.행);
+          const headers = rows[1] || [];
+          const body = rows.slice(2).filter((row) => row.some((value) => String(value ?? "").trim()));
+          if (headers.length) {
+            lines.push("| " + headers.map(mdCell).join(" | ") + " |");
+            lines.push("| " + headers.map(() => "---").join(" | ") + " |");
+            body.forEach((row) => lines.push("| " + headers.map((_, index) => mdCell(row[index] ?? "")).join(" | ") + " |"));
+          }
+          (reply.확인필요 || []).forEach((issue) => lines.push("- 확인필요: " + issue.항목 + " · " + issue.내용));
+          lines.push("");
+        });
+      });
+      downloadText("내부검토용_제출본.md", lines.join("\n"), "text/markdown;charset=utf-8");
+      Common.setStatus("내부 검토용 Markdown을 만들었습니다.", "ok");
+    }
+
+    function responsible(item) {
+      return Array.from(new Set([item.주관과].concat(item.협조과 || []).filter(Boolean)));
+    }
+
+    function selectTab(name) {
+      document.querySelectorAll("[data-panel]").forEach((panel) => { panel.hidden = panel.dataset.panel !== name; });
+      document.querySelectorAll("[data-tab]").forEach((button) => {
+        const active = button.dataset.tab === name;
+        button.setAttribute("aria-selected", String(active));
+        button.classList.toggle("secondary", !active);
+      });
+    }
+
+    function mdCell(value) { return String(value ?? "").replace(/\|/g, "\\|").replace(/\r?\n/g, " "); }
+    function esc(value) { return Common.escapeHtml(value); }
+    function downloadText(name, content, type) {
+      const url = URL.createObjectURL(new Blob(["\ufeff", content], { type: type }));
+      const link = document.createElement("a");
+      link.href = url; link.download = name; link.click();
+      URL.revokeObjectURL(url);
+    }
+  </script>
+</body>
+</html>

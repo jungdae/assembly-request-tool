@@ -4,10 +4,12 @@
     { "source": "/index.html", "destination": "/web/index.html" },
     { "source": "/assign.html", "destination": "/web/assign.html" },
     { "source": "/dept.html", "destination": "/web/dept.html" },
+    { "source": "/collect.html", "destination": "/web/collect.html" },
     { "source": "/common.js", "destination": "/web/common.js" },
     { "source": "/split.js", "destination": "/web/split.js" },
     { "source": "/engine.js", "destination": "/web/engine.js" },
     { "source": "/flow.js", "destination": "/web/flow.js" },
+    { "source": "/validate.js", "destination": "/web/validate.js" },
     { "source": "/lib/:path*", "destination": "/web/lib/:path*" },
     { "source": "/data/:path*", "destination": "/web/data/:path*" }
   ]
